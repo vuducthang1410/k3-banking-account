@@ -1,0 +1,62 @@
+<configuration>
+
+    <!-- Định nghĩa appender để ghi log vào console -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg MDC:[traceId=%X{traceId}, spanId=%X{spanId}]%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Định nghĩa appender để ghi log vào file chung -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/loan_service/application.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/loan_service/application.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg MDC:[traceId=%X{traceId}, spanId=%X{spanId}]%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Định nghĩa appender để ghi log của Hibernate -->
+    <appender name="HIBERNATE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/loan_service/hibernate.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/loan_service/hibernate.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg MDC:[traceId=%X{traceId}, spanId=%X{spanId}]%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Định nghĩa appender để ghi log của Spring Security -->
+    <appender name="SECURITY" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/loan_service/security.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/loan_service/security.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg MDC:[traceId=%X{traceId}, spanId=%X{spanId}]%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Cấu hình root logger -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </root>
+
+    <!-- Cấu hình logger cho Hibernate -->
+    <logger name="org.hibernate" level="DEBUG" additivity="false">
+        <appender-ref ref="HIBERNATE"/>
+    </logger>
+
+    <!-- Cấu hình logger cho Spring Security -->
+    <logger name="org.springframework.security" level="DEBUG" additivity="false">
+        <appender-ref ref="SECURITY"/>
+    </logger>
+
+</configuration>

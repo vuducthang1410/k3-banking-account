@@ -1,0 +1,70 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: account-service
+
+  # Database
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${DB_URL:jdbc:mysql://localhost:3306/account_db}?createDatabaseIfNotExist=true&useSSL=false
+    username: ${db.username:root}
+    password: ${db.password:123456}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    generate-ddl: true
+    properties:
+      hibernate.envers.autoRegisterListeners: true
+    open-in-view: true
+
+  # i18n
+  messages:
+    encoding: UTF-8
+    basename: i18n/messages
+
+  # Hashicorp/Vault
+  config:
+    import: vault://
+  cloud:
+    vault:
+      scheme: http
+      host: localhost
+      port: 8200
+      authentication: token
+      token: 0000
+      kv:
+        backend: secret
+        enabled: true
+
+    # Feign Client
+    openfeign:
+      okhttp:
+        enabled: true
+
+  cache:
+    type: redis
+  data:
+    redis:
+      host: 172.20.0.0
+      port: 6379
+
+# gRPC/Dubbo
+dubbo:
+  application:
+    name: account-service
+  protocol:
+    name: dubbo
+    port: 20882
+  registry:
+    address: zookeeper://${DOCKER_HOST:localhost}:2181
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+# Feign config uri
+service:
+  core.banking:
+    url: http://${CORE_SERVICE:localhost}:8090/api/v1

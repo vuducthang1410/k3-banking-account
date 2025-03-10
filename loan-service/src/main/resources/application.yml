@@ -1,0 +1,90 @@
+server:
+  port: 8084
+dubbo:
+  application:
+    name: loan-service
+    #    qos-enable: false
+    qos-port: 33333
+  registry:
+    address: zookeeper://${DOCKER_HOST:localhost}:2181
+  protocol:
+    name: dubbo
+    port: 20884
+
+spring:
+  application:
+    name: LoanService
+  cron-job:
+    auto-deft-repayment: 0 0 0 * * ?
+    notify-up-coming-repayment: 0 0 8 * * ?
+    process-overdue-payments: 0 0 0 * * ?
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${DB_USERNAME:root}
+    url: ${DB_URL:jdbc:mysql://localhost:3306/loan-service}?useSSL=false&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
+    password: ${DB_PASSWORD:123456}
+  jpa:
+    hibernate:
+      #      ddl-auto: create
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        show_sql: true
+        format_sql: true
+        envers.audit_table_suffix: _AUD
+        envers.revision_field_name: REV
+        envers.revision_type_field_name: REV_TYPE
+        envers.audit_strategy: org.hibernate.envers.strategy.ValidityAuditStrategy
+    show-sql: true
+  messages:
+    basename: messages
+    encoding: UTF-8
+    always-use-message-format: true
+    fallback-to-system-locale: false
+  data:
+    redis:
+      timeout: 3000
+      port: 6379
+      host: localhost
+      connect-timeout: 3000
+  rabbitmq:
+    host: ${DOCKER_HOST:localhost}
+    port: 5672
+    username: ${RABBITMQ_USER:root}
+    password: ${RABBITMQ_PASS:12345}
+logging:
+  file:
+    path: logs/loan_service
+  level:
+    org.demo.loanservice.config.CustomRequestLoggingFilter: DEBUG
+
+rabbitmq:
+  queue:
+    name:
+      disbursement:
+        success: disbursement_success_loan_queue
+        fail: disbursement_fail_loan_queue
+      loan:
+        approved_success: approval_loan_success_queue
+        approved_fail: approval_loan_fail_queue
+        remind: remind_loan_queue
+        completion: completion_loan_queue
+        overdue_debt_loan: overdue_dept_loan_queue
+        create_account_loan: create_account_loan_queue
+  exchange:
+    name: loan_exchange
+  routing:
+    key:
+      disbursement:
+        success: disbursement.success
+        fail: disbursement.fail
+      loan:
+        approved_success: loan.approved.success
+        approved_fail: loan.approved.fail
+        remind: loan.remind
+        completion: loan.completion
+        overdue_debt_loan: loan.overdue.debt
+        create_account_loan: loan.create.account
+
+

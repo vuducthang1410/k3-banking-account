@@ -1,0 +1,46 @@
+body {
+    background-image: url(https://kienlongbank.com/Data/Sites/1/media/logo-klb/logo-kienlongbank-favicon.png) !important;
+    background-repeat: no-repeat !important;
+    background-size: cover !important;
+    background-position: center center !important;
+    background-color: rgba(255, 255, 255, 0.95) !important;
+    background-blend-mode: overlay !important;
+    background-size: 20% !important;
+    background-attachment: fixed !important;
+}
+
+h3 {
+    color: #222222 !important;
+}
+
+.swagger-ui .info .title {
+    color: #32a42b;
+}
+
+.swagger-ui .btn.authorize {
+    background-color: transparent;
+    border-color: #51a05e;
+    color: #51a05e;
+    display: inline;
+    line-height: 1;
+}
+
+    .swagger-ui .btn.authorize svg {
+        fill: #51a05e;
+    }
+
+.opblock-summary-get > button > span.opblock-summary-method {
+    background-color: #1a70a9 !important;
+}
+
+.opblock-summary-post > button > span.opblock-summary-method {
+    background-color: #51a05e !important;
+}
+
+.opblock-summary-put > button > span.opblock-summary-method {
+    background-color: #ff6a00 !important;
+}
+
+.opblock-summary-delete > button > span.opblock-summary-method {
+    background-color: #cc231e !important;
+}

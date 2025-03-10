@@ -1,0 +1,315 @@
+name: docker-compose
+services:
+  database:
+    container_name: database-mysql
+    image: mysql:8.0.40-debian
+    ports:
+      - "8000:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=12345
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "database-mysql" ]
+      interval: 7s
+      timeout: 5s
+      retries: 3
+    networks:
+      - microservice_networks
+
+  gateway:
+    container_name: gateway-service
+    build:
+      context: .
+      dockerfile: ./api-gateway/Dockerfile
+    environment:
+      - DOCKER_HOST=host.docker.internal
+    ports:
+      - "8080:8080"
+    depends_on:
+      transaction:
+        condition: service_started
+    networks:
+      - microservice_networks
+
+  customer:
+    container_name: customer-service
+    build:
+      context: .
+      dockerfile: ./customer_service/Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - DB_USERNAME=root
+      - DB_PASSWORD=12345
+      - DB_URL=jdbc:mysql://database:3306/customer_db
+      - DOCKER_HOST=host.docker.internal
+      - RABBITMQ_USER=root
+      - RABBITMQ_PASS=12345
+      - CORE_SERVICE=core
+    depends_on:
+      database:
+        condition: service_healthy
+      zipkin:
+        condition: service_started
+      vault:
+        condition: service_started
+    networks:
+      - microservice_networks
+
+  account:
+    container_name: account-service
+    build:
+      context: .
+      dockerfile: ./account-service/Dockerfile
+    ports:
+      - "8082:8082"
+    environment:
+      - DB_USERNAME=root
+      - DB_PASSWORD=12345
+      - DB_URL=jdbc:mysql://database:3306/account_db
+      - DOCKER_HOST=host.docker.internal
+      - RABBITMQ_USER=root
+      - RABBITMQ_PASS=12345
+      - CORE_SERVICE=core
+    depends_on:
+      database:
+        condition: service_healthy
+      zipkin:
+        condition: service_started
+      vault:
+        condition: service_started
+    networks:
+      - microservice_networks
+
+  report:
+    container_name: reporting-service
+    build:
+      context: .
+      dockerfile: ./reporting-service/Dockerfile
+    ports:
+      - "8083:8083"
+    environment:
+      - DB_USERNAME=root
+      - DB_PASSWORD=12345
+      - DB_URL=jdbc:mysql://database:3306/reporting_db
+      - DOCKER_HOST=host.docker.internal
+      - RABBITMQ_USER=root
+      - RABBITMQ_PASS=12345
+    depends_on:
+      database:
+        condition: service_healthy
+      zipkin:
+        condition: service_started
+      vault:
+        condition: service_started
+    networks:
+      - microservice_networks
+
+  loan:
+    container_name: loan-service
+    build:
+      context: .
+      dockerfile: ./loan-service/Dockerfile
+    ports:
+      - "8084:8084"
+    environment:
+      - DB_USERNAME=root
+      - DB_PASSWORD=12345
+      - DB_URL=jdbc:mysql://database:3306/loan-service
+      - DOCKER_HOST=host.docker.internal
+      - RABBITMQ_USER=root
+      - RABBITMQ_PASS=12345
+      - CORE_SERVICE=core
+    depends_on:
+      database:
+        condition: service_healthy
+      zipkin:
+        condition: service_started
+      vault:
+        condition: service_started
+    networks:
+      - microservice_networks
+
+  transaction:
+    container_name: transaction-service
+    build:
+      context: .
+      dockerfile: ./transaction-service/Dockerfile
+    ports:
+      - "8085:8085"
+    environment:
+      - DB_USERNAME=root
+      - DB_PASSWORD=12345
+      - DB_URL=jdbc:mysql://database:3306/transaction_db
+      - DOCKER_HOST=host.docker.internal
+      - RABBITMQ_USER=root
+      - RABBITMQ_PASS=12345
+      - CORE_SERVICE=core
+      - NAPAS_SERVICE=napas
+    depends_on:
+      database:
+        condition: service_healthy
+      zipkin:
+        condition: service_started
+      vault:
+        condition: service_started
+    networks:
+      - microservice_networks
+
+  notification:
+    container_name: notification-service
+    build:
+      context: .
+      dockerfile: ./notification-service/Dockerfile
+    ports:
+      - "8086:8086"
+    environment:
+      - DB_USERNAME=root
+      - DB_PASSWORD=12345
+      - DB_URL=jdbc:mysql://database:3306/noti_db
+      - DOCKER_HOST=host.docker.internal
+      - RABBITMQ_USER=root
+      - RABBITMQ_PASS=12345
+    depends_on:
+      database:
+        condition: service_healthy
+      zipkin:
+        condition: service_started
+      vault:
+        condition: service_started
+    networks:
+      - microservice_networks
+
+  core:
+    container_name: core-banking-service
+    build:
+      context: .
+      dockerfile: ./core-banking-service/Dockerfile
+    environment:
+      - DB_USERNAME=root
+      - DB_PASSWORD=12345
+      - DB_URL=jdbc:mysql://database:3306/core_banking_db
+      - DOCKER_HOST=host.docker.internal
+      - RABBITMQ_USER=root
+      - RABBITMQ_PASS=12345
+    depends_on:
+      database:
+        condition: service_healthy
+      zipkin:
+        condition: service_started
+      vault:
+        condition: service_started
+    networks:
+      - microservice_networks
+
+  napas:
+    container_name: napas-service
+    build:
+      context: .
+      dockerfile: ./napas-service/Dockerfile
+    environment:
+      - DB_USERNAME=root
+      - DB_PASSWORD=12345
+      - DB_URL=jdbc:mysql://database:3306/napas_db
+      - DOCKER_HOST=host.docker.internal
+      - RABBITMQ_USER=root
+      - RABBITMQ_PASS=12345
+    depends_on:
+      database:
+        condition: service_healthy
+      zipkin:
+        condition: service_started
+      vault:
+        condition: service_started
+    networks:
+      - microservice_networks
+
+  redis:
+    container_name: redis
+    image: redis:latest
+    restart: always
+    ports:
+      - "6379:6379"
+    command: [ "bash", "-c", "redis-server --appendonly yes --requirepass 12345" ]
+    volumes:
+      - cache:/data
+    networks:
+      - microservice_networks
+
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=root
+      - RABBITMQ_DEFAULT_PASS=12345
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "rabbitmqctl", "status" ]
+      interval: 7s
+      timeout: 5s
+      retries: 3
+    networks:
+      - microservice_networks
+
+  zipkin:
+    container_name: zipkin
+    image: openzipkin/zipkin:latest
+    ports:
+      - "9411:9411"
+    environment:
+      - RABBIT_ADDRESSES=host.docker.internal:5672
+      - RABBIT_USER=root
+      - RABBIT_PASSWORD=12345
+      - STORAGE_TYPE=mem
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - microservice_networks
+
+  vault:
+    container_name: vault
+    image: hashicorp/vault:latest
+    restart: always
+    ports:
+      - "8200:8200"
+    environment:
+      - VAULT_DEV_ROOT_TOKEN_ID=0000
+      - VAULT_TOKEN=0000
+    volumes:
+      - ./init-vault.sh:/init-vault.sh:rw
+    cap_add:
+      - IPC_LOCK
+    command: [ "sh", "-c", "vault server -dev -dev-listen-address=0.0.0.0:8200 
+    & sleep 5 && /init-vault.sh && tail -f /dev/null" ]
+    networks:
+      - microservice_networks
+
+  zookeeper:
+    image: zookeeper:latest
+    container_name: zookeeper
+    restart: always
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_INIT_LIMIT: 5
+      ZOOKEEPER_SYNC_LIMIT: 2
+    networks:
+      - microservice_networks
+
+volumes:
+  cache:
+    driver: local
+
+networks:
+  microservice_networks:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: "172.20.0.0/16"

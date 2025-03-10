@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>
+                [%d{dd-MM-yyyy HH:mm:ss.SSS}] %magenta([%thread]) %highlight(%-5level) %logger{36}.%M: %cyan(%msg%n)
+            </pattern>
+        </encoder>
+    </appender>
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file> logs/application.log </file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/application.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory> 30 </maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>
+                [%d{dd-MM-yyyy HH:mm:ss.SSS}] %magenta([%thread]) %highlight(%-5level) %logger{36}.%M: %cyan(%msg%n)
+            </pattern>
+        </encoder>
+    </appender>
+
+    <appender name="HIBERNATE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file> logs/hibernate.log </file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/hibernate.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory> 30 </maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>
+                [%d{dd-MM-yyyy HH:mm:ss.SSS}] %magenta([%thread]) %highlight(%-5level) %logger{36}.%M: %cyan(%msg%n)
+            </pattern>
+        </encoder>
+    </appender>
+
+    <appender name="SECURITY" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file> logs/security.log </file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/security.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory> 30 </maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>
+                [%d{dd-MM-yyyy HH:mm:ss.SSS}] %magenta([%thread]) %highlight(%-5level) %logger{36}.%M: %cyan(%msg%n)
+            </pattern>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </root>
+
+    <!--    Config logger hibernate-->
+    <logger name="org.hibernate" level="DEBUG" additivity="false">
+        <appender-ref ref="HIBERNATE"/>
+    </logger>
+
+    <!--    config logger security-->
+    <logger name="org.springframework.security" level="DEBUG" additivity="false">
+        <appender-ref ref="SECURITY"/>
+    </logger>
+</configuration>
