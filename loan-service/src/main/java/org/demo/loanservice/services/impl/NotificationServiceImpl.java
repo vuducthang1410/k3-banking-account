@@ -1,11 +1,6 @@
 package org.demo.loanservice.services.impl;
 
-import com.system.common_library.dto.notifcation.rabbitMQ.LoanAccountNoti;
-import com.system.common_library.dto.notifcation.rabbitMQ.LoanCompletionNoti;
-import com.system.common_library.dto.notifcation.rabbitMQ.LoanDisbursementSuccessNoti;
-import com.system.common_library.dto.notifcation.rabbitMQ.LoanFinancialReviewSuccessNoti;
-import com.system.common_library.dto.notifcation.rabbitMQ.LoanOverDueNoti;
-import com.system.common_library.dto.notifcation.rabbitMQ.LoanReminderNoti;
+import com.system.common_library.dto.notifcation.rabbitMQ.*;
 import lombok.RequiredArgsConstructor;
 import org.demo.loanservice.services.INotificationService;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;

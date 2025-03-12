@@ -292,8 +292,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         if (otp.equals(TypeOTP.MAIL)) {
             return notificationDubboService.sendOtpCodeEmailCustomerRegistration(otpNoti, mail, customerDetail.getFullName());
         } else {
-//            return notificationDubboService.sendOTPCodeCustomerResetPassword(otpNoti, customerDetail);
-            return true;
+            return notificationDubboService.sendOTPCodeCustomerResetPassword(otpNoti, customerDetail);
         }
     }
 }

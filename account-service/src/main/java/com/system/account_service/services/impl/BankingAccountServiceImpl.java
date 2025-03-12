@@ -2,9 +2,11 @@ package com.system.account_service.services.impl;
 
 import com.system.account_service.dtos.banking.BankingRp;
 import com.system.account_service.dtos.banking.CreateBankingDTO;
+import com.system.account_service.dtos.banking.ReportPaymentByRangeDTO;
 import com.system.account_service.dtos.response.PageDataDTO;
 import com.system.account_service.entities.AccountCommons;
 import com.system.account_service.entities.BankingAccount;
+import com.system.account_service.entities.type.AccountStatus;
 import com.system.account_service.exception.payload.ExistedDataException;
 import com.system.account_service.exception.payload.InvalidParamException;
 import com.system.account_service.exception.payload.ResourceNotFoundException;
@@ -14,6 +16,7 @@ import com.system.account_service.services.BankingAccountService;
 import com.system.account_service.services.BranchBankingService;
 import com.system.account_service.utils.DateTimeUtils;
 import com.system.account_service.utils.MessageKeys;
+import com.system.common_library.dto.report.AccountReportRequest;
 import com.system.common_library.dto.response.account.AccountInfoDTO;
 import com.system.common_library.enums.AccountType;
 import com.system.common_library.enums.ObjectStatus;
@@ -146,6 +149,20 @@ public class BankingAccountServiceImpl implements BankingAccountService {
     public BankingAccount getDataId(String id) {
         return repository.findByAccountIdAndDeleted(id, false)
                 .orElseThrow(ResourceNotFoundException::new);
+    }
+
+    @Override
+    public List<BankingAccount> getReportsByRange(AccountReportRequest request) {
+        ReportPaymentByRangeDTO reportByRangeDTO = ReportPaymentByRangeDTO.builder()
+                .branchId(request.getBankBranch())
+                .startBalance(BigDecimal.valueOf(request.getStartBalance()))
+                .endBalance(BigDecimal.valueOf(request.getEndBalance()))
+                .startAt(request.getStartAt())
+                .endAt(request.getEndAt())
+                .status(AccountStatus.valueOf(request.getStatus().name()))
+                .build();
+
+        return repository.getReportsByRange(reportByRangeDTO);
     }
 
 

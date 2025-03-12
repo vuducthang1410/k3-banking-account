@@ -17,6 +17,9 @@ public class CreditProfiles extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
+    @Column(nullable = false)
+    private String customerId;
+
     private String company;
 
     @Column(nullable = false)

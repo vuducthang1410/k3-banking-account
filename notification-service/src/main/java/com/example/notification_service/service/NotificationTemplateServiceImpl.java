@@ -16,6 +16,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -32,6 +33,7 @@ import java.util.stream.StreamSupport;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class NotificationTemplateServiceImpl implements NotificationTemplateService {
     private final NotificationTemplateRepository notificationTemplateRepository;
     private final ObjectMapper objectMapper;
@@ -242,6 +244,15 @@ public class NotificationTemplateServiceImpl implements NotificationTemplateServ
 //        }
         return retrieveAllTemplatesDTO(pageable);
 
+    }
+
+    @Override
+    public Page<NotificationTemplateResponseDTO> searchTemplatesSpecification(String title, String content, String channel, String event, Pageable pageable) {
+
+//        Page<NotificationTemplate> entities=  notificationTemplateRepository.findAll(NotificationTemplateSpecification.search(title, content, channel, event), pageable);
+        Page<NotificationTemplate> entities=  notificationTemplateRepository.searchTemplates(title, content, channel, event, pageable);
+
+        return entities.map(this::convertToDTO);
     }
 
     private NotificationTemplateResponseDTO convertToDTO(NotificationTemplate notificationTemplate){

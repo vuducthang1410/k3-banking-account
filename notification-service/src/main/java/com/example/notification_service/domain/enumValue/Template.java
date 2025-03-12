@@ -1,6 +1,7 @@
 package com.example.notification_service.domain.enumValue;
 
 public enum Template {
+    LOAN_PAYMENT_SUCCESSFUL,
     OTP_VERIFICATION,
     TRANSACTION_SUCCESS,
     TRANSACTION_SUSPICIOUS,

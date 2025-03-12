@@ -7,12 +7,12 @@ import org.springframework.context.support.ReloadableResourceBundleMessageSource
 
 @Configuration
 public class MessageSourceConfig {
-
-    @Bean
-    public MessageSource messageSource() {
-        ReloadableResourceBundleMessageSource messageSource = new ReloadableResourceBundleMessageSource();
-        messageSource.setBasename("classpath:messages");
-        messageSource.setDefaultEncoding("UTF-8");
-        return messageSource;
-    }
+        @Bean
+        public MessageSource messageSource() {
+            ReloadableResourceBundleMessageSource messageSource = new ReloadableResourceBundleMessageSource();
+            messageSource.setBasename("classpath:I18/messages"); // Trỏ đúng vào thư mục I18
+            messageSource.setDefaultEncoding("UTF-8");
+            messageSource.setUseCodeAsDefaultMessage(true); // Tránh lỗi nếu thiếu key
+            return messageSource;
+        }
 }

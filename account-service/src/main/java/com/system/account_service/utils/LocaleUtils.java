@@ -13,7 +13,7 @@ public class LocaleUtils {
     private final MessageSource messageSource;
 
     public String getLocaleMsg(String msgKey, WebRequest req, Object... args) {
-        Locale locale = req.getLocale();
+        Locale locale = (req != null) ? req.getLocale() : Locale.ENGLISH;
         return messageSource.getMessage(msgKey, args, locale);
     }
 }

@@ -1,0 +1,4 @@
+Quy khach da dang ky thanh cong ngan hang so KienlongBank.
+Ten dang nhap: [[${phoneNumber}]]
+
+Vui long dang nhap va giao dich chi tren ung dung KienlongBank Mobile Banking.

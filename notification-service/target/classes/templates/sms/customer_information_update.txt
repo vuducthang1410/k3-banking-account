@@ -1,0 +1,7 @@
+THONG BAO: Thong tin cua quy khach da duoc cap nhat thanh cong.
+Ho va ten: [[${customerfullname}]]
+So dien thoai: [[${phoneNumber}]]
+Dia chi: [[${address}]]
+Email: [[${emailAddress}]]
+
+Neu quy khach khong yeu cau cap nhat nay, vui long lien he tong dai ho tro ngay.

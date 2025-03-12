@@ -1,0 +1,5 @@
+Tai khoan thanh toan cua quy khach da duoc tao thanh cong.
+So tai khoan: [[${accountNumber}]]
+Ngay mo tai khoan: [[${openDate}]]
+
+Tai khoan da san sang de su dung. Neu co bat ky thac mac nao, vui long lien he voi chung toi de duoc ho tro.

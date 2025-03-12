@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 public class TransactionsFilterRequest {@DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
 private LocalDateTime startDate;
 
+    private String customerId;
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
     private LocalDateTime endDate;
 

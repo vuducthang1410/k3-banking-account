@@ -5,6 +5,7 @@ public class MessageKeys {
     public static final String RESOURCE_NOT_FOUND_ERR = "err.notfound";
     public static final String INTERNAL_SERVER_ERR = "err.internal";
     public static final String REQUEST_BODY_INVALID = "err.body_invalid";
+    public static final String INVALID_TOKEN = "err.invalid_token";
 
     public static final String EXISTED_ACCOUNT = "conflict.account";
     public static final String EXISTED_ACCOUNT_NUMBER = "conflict.account_number";
@@ -39,6 +40,8 @@ public class MessageKeys {
     public static final String MESSAGES_BLANK_BRANCH_ADDRESS = "messages.blank.branch_address";
     public static final String MESSAGES_BLANK_CIF = "messages.blank.cif";
     public static final String MESSAGES_BLANK_SAVINGS_TERM = "messages.blank.savings_term";
+    public static final String MESSAGED_BLANK_PHONE = "messages.blank.phone";
+    public static final String MESSAGED_BLANK_INCOME = "messages.blank.income";
 
     public static final String MESSAGES_SCOPE_INTEREST_RATE = "messages.scope.interest_rate";
     public static final String MESSAGES_SCOPE_CREDIT_INTEREST_RATE = "messages.scope.credit.interest_rate";
@@ -49,6 +52,7 @@ public class MessageKeys {
     public static final String MESSAGES_SCOPE_ACCOUNT_NUMBER_SIZE = "messages.scope.account_number.size";
     public static final String MESSAGES_SCOPE_PIN_CODE = "messages.scope.pin_code";
     public static final String MESSAGES_SCOPE_MIN_TERM = "messages.scope.min_term";
+    public static final String MESSAGES_SCOPE_MIN_INCOME = "messages.scope.min.income";
 
     public static final String MESSAGES_ENUM_VERIFY_STATUS = "messages.enum.verification_status";
     public static final String MESSAGES_ENUM_ACCOUNT_TYPE = "messages.enum.account_type";
@@ -57,6 +61,9 @@ public class MessageKeys {
 
     public static final String DUBBO_CUSTOMER_INVALID = "dubbo.customer.invalid";
     public static final String DUBBO_CUSTOMER_NOT_ACTIVE = "dubbo.customer.not_active";
+
+    public static final String CREDIT_ACTIVE_OK = "credit.active.ok";
+    public static final String CREDIT_ACTIVE_FAILURE = "credit.active.failure";
 
 //    Logic
     public static final String BALANCE_INSUFFICIENT = "balance.Insufficient";

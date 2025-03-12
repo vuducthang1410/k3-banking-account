@@ -16,6 +16,7 @@ import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.properties.UnitValue;
 import com.itextpdf.layout.properties.VerticalAlignment;
 import com.system.common_library.dto.report.config.FieldName;
+import com.system.common_library.enums.ReportType;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 
@@ -191,6 +192,13 @@ public class PdfLayout {
                 .setFontSize(18)
                 .setTextAlignment(TextAlignment.CENTER)
                 .setMarginBottom(10));
+    }
+
+    public static String generateReportFileName(ReportType reportType) {
+        // Lấy thời gian hiện tại theo định dạng yyyyMMdd_HHmmss
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+        // Ví dụ: account_report_20250311_184530.pdf
+        return reportType.toString().toLowerCase() + "_report_" + timestamp + ".pdf";
     }
 
 }

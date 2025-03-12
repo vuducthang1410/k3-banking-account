@@ -1,0 +1,7 @@
+ Khoan vay cua quy khach tai KienlongBank da qua han thanh toan.
+So hop dong: [[${contractNumber}]]
+So tien qua han: [[${amountDue}]]
+Ngay den han: [[${dueDate}]]
+So ngay qua han: [[${overdueDays}]]
+Phi phat (neu co): [[${penaltyFee}]]
+Vui long thanh toan ngay de tranh phat va anh huong toi lich su tin dung.

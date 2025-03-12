@@ -1,0 +1,5 @@
+Han thanh toan khoan vay cua ban sap den. 
+So hop dong: [[${contractNumber}]]
+So tien can thanh toan: [[${amountDue}]]
+Ngay den han: [[${dueDate}]]. 
+Vui long thanh toan dung han de tranh phi phat.

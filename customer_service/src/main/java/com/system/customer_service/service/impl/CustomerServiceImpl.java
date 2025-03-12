@@ -3,6 +3,7 @@ package com.system.customer_service.service.impl;
 import com.system.common_library.dto.account.CreateDubboBankingDTO;
 import com.system.common_library.dto.request.customer.CreateCustomerCoreDTO;
 import com.system.common_library.dto.response.account.AccountInfoDTO;
+import com.system.common_library.dto.response.account.BranchInfoDTO;
 import com.system.common_library.dto.response.customer.CustomerCoreDTO;
 import com.system.common_library.dto.response.customer.CustomerExtraCoreDTO;
 import com.system.common_library.enums.Gender;
@@ -157,6 +158,18 @@ public class CustomerServiceImpl implements CustomerService {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
         mergerCustomer(customer, request, userId);
+
+        //Lưu vào DB và trả về response
+        customerRepository.save(customer);
+        return customerMapper.toCustomerResponse(customer);
+    }
+
+    @Override
+    public CustomerResponse updateCustomerAd(String customerId, CustomerUpdateRequest request) {
+        var customer = this.customerRepository.findById(customerId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        mergerCustomer(customer, request, customer.getUserId());
 
         //Lưu vào DB và trả về response
         customerRepository.save(customer);
@@ -362,22 +375,37 @@ public class CustomerServiceImpl implements CustomerService {
     public void createAccountDubbo(CustomerResponse customerResponse) {
         log.info("Bắt đầu tạo account khách hàng.");
 
-        Customer customer = this.customerRepository.findCustomerById(customerResponse.getId())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        try {
+            Customer customer = this.customerRepository.findCustomerById(customerResponse.getId())
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
-        CreateDubboBankingDTO dto = CreateDubboBankingDTO.builder()
-                .customerId(customer.getId())
-                .cifCode(customer.getCifCode())
-                .phone(customer.getPhone())
-                .fullName(customer.getLastName() + " " + customer.getFirstName())
-                .email(customer.getMail())
-                .branchId("66c32369-573d-416f-bda0-16e419fc930b")
-                .build();
+            BranchInfoDTO branch = accountDubboService.getRandomBranch();
 
-        AccountInfoDTO acc = accountDubboService.createBankingAccount(dto);
+            CreateDubboBankingDTO dto = CreateDubboBankingDTO.builder()
+                    .customerId(customer.getId())
+                    .cifCode(customer.getCifCode())
+                    .phone(customer.getPhone())
+                    .fullName(customer.getLastName() + " " + customer.getFirstName())
+                    .email(customer.getMail())
+                    .branchId(branch.getBranchId())
+                    .build();
 
-        customer.setAccountNumber(acc.getAccountNumber());
-        customerRepository.save(customer);
+            AccountInfoDTO acc = accountDubboService.createBankingAccount(dto);
+
+            customer.setAccountNumber(acc.getAccountNumber());
+            customerRepository.save(customer);
+
+            log.info("Tạo tài khoản thành công cho khách hàng ID: {}", customer.getId());
+        } catch (Exception e) {
+            log.error("Lỗi khi tạo core khách hàng: {}", e.getMessage(), e);
+
+            // Thực hiện rollback dữ liệu
+            rollbackKycRequestCreation(customerResponse.getId());
+            rollbackCustomerCreation(customerResponse.getId());
+
+            // Ném lỗi để Transactional rollback
+            throw new RuntimeException("Tạo core khách hàng thất bại, rollback dữ liệu!", e);
+        }
     }
 
     @Transactional

@@ -4,6 +4,7 @@ import com.system.account_service.dtos.response.PageDataDTO;
 import com.system.account_service.dtos.saving.CreateSavingDTO;
 import com.system.account_service.dtos.saving.SavingRp;
 import com.system.account_service.entities.SavingAccount;
+import com.system.common_library.dto.report.AccountReportRequest;
 import com.system.common_library.dto.response.customer.CustomerCoreDTO;
 import com.system.common_library.dto.user.CustomerDetailDTO;
 
@@ -28,4 +29,6 @@ public interface SavingAccountService {
     List<SavingAccount> findAllByBranchId(String branchId);
 
     SavingAccount getDataId(String id);
+
+    List<SavingAccount> getReportsByRange(AccountReportRequest request);
 }

@@ -25,29 +25,53 @@ import java.util.Optional;
 @Service
 public class TransactionReportService {
     @Autowired
-    private ReportStatusService reportStatusService;
+    private ReportService reportService;
+
+    @Autowired
+    private FilebaseStorageService filebaseStorageService;
 
     @DubboReference
     private TransactionDubboService transactionDubboService;
 
-    public byte[] createTransactionsReportByFilter(TransactionsFilterRequest request) throws Exception {
-        TransactionReportRequest gRpcRequest = TransactionReportRequest.builder()
-                .startDate(request.getStartDate())
-                .endDate(request.getEndDate())
-                .minAmount(request.getMinAmount())
-                .maxAmount(request.getMaxAmount())
-                .transactionType(request.getTransactionType())
-                .transactionStatus(request.getTransactionStatus())
-                .senderAccountNumber(request.getSenderAccountNumber())
-                .recipientAccountNumber(request.getRecipientAccountNumber())
-                .build();
-        Report report = reportStatusService.createReport(ReportType.TRANSACTION);
-        List<TransactionReportDTO> transactions = Optional.ofNullable(
-                transactionDubboService.getTransactionByFilter(gRpcRequest)
-        ).orElseThrow(() -> new Exception("error.dubbo.service_unavailable"));
-        byte[] pdfFile = generateTransactionsReportPdf(transactions);
-        reportStatusService.updateReportStatus(report.getId(), State.COMPLETED);
-        return pdfFile;
+    public String createTransactionsReportByFilter(TransactionsFilterRequest request) throws Exception {
+        // 1. Tạo report với trạng thái PENDING
+        Report report = reportService.createReport(ReportType.TRANSACTION_LIST, request.getCustomerId());
+
+        try {
+            // 2. Chuẩn bị request cho gRPC
+            TransactionReportRequest gRpcRequest = TransactionReportRequest.builder()
+                    .startDate(request.getStartDate())
+                    .endDate(request.getEndDate())
+                    .minAmount(request.getMinAmount())
+                    .maxAmount(request.getMaxAmount())
+                    .transactionType(request.getTransactionType())
+                    .transactionStatus(request.getTransactionStatus())
+                    .senderAccountNumber(request.getSenderAccountNumber())
+                    .recipientAccountNumber(request.getRecipientAccountNumber())
+                    .build();
+
+            // 3. Gọi gRPC lấy danh sách giao dịch
+            List<TransactionReportDTO> transactions = Optional.ofNullable(
+                    transactionDubboService.getTransactionByFilter(gRpcRequest)
+            ).orElseThrow(() -> new Exception("error.dubbo.service_unavailable"));
+
+            // 4. Tạo file PDF từ danh sách giao dịch
+            byte[] pdfFile = generateTransactionsReportPdf(transactions);
+
+            // 5. Upload file PDF lên Filebase
+            String fileName = PdfLayout.generateReportFileName(ReportType.TRANSACTION_LIST);
+            String fileUrl = filebaseStorageService.uploadFile(pdfFile, fileName);
+
+            // 6. Cập nhật trạng thái báo cáo & lưu URL vào DB
+            reportService.updateReportStatus(report.getId(), State.COMPLETED, fileUrl);
+
+            // 7. Trả về URL file PDF
+            return fileUrl;
+        } catch (Exception e) {
+            // Nếu có lỗi, cập nhật trạng thái FAILED
+            reportService.updateReportStatus(report.getId(), State.FAILED, null);
+            throw new Exception("error.report.generation_failed", e);
+        }
     }
 
     private byte[] generateTransactionsReportPdf(List<TransactionReportDTO> transactions) throws IOException, IllegalAccessException {

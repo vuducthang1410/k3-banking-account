@@ -256,4 +256,12 @@ public class SMSServiceImpl implements SMSService {
         return getaBoolean(phoneNumber, variables, Template.LOAN_DISBURSEMENT_SUCCESS);
 
     }
+
+    @Override
+    public boolean sendLoanPaymentSuccess(LoanPaymentSuccessNoti loanPaymentSuccessNoti, String phoneNumber) {
+        Map<String,Object> variables = objectConverter.convertToMap(loanPaymentSuccessNoti);
+        variables.put("paymentDate", objectConverter.getDate(loanPaymentSuccessNoti.getPaymentDate()));
+        variables.put("paymentAmount", objectConverter.getMoneyFormat(loanPaymentSuccessNoti.getPaymentAmount()));
+        return getaBoolean(phoneNumber, variables, Template.LOAN_PAYMENT_SUCCESSFUL);
+    }
 }

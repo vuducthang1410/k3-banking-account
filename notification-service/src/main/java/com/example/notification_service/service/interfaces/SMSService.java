@@ -35,4 +35,6 @@ public interface SMSService {
     boolean sendDisbursementFail(String phone);
 
     boolean sendDisbursementSuccess(LoanDisbursementSuccessNoti loandisbursementsuccess, String phone);
+
+    boolean sendLoanPaymentSuccess(LoanPaymentSuccessNoti loanPaymentSuccessNoti, String phone);
 }

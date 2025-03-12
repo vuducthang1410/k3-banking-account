@@ -4,6 +4,7 @@ import com.system.account_service.dtos.loan.CreateLoanDTO;
 import com.system.account_service.dtos.loan.LoanRp;
 import com.system.account_service.dtos.response.PageDataDTO;
 import com.system.account_service.entities.LoanAccount;
+import com.system.common_library.dto.report.AccountReportRequest;
 import com.system.common_library.dto.response.account.AccountInfoDTO;
 
 import java.math.BigDecimal;
@@ -25,4 +26,6 @@ public interface LoanAccountService {
     List<LoanAccount> findAllByBranchId(String branchId);
 
     LoanAccount getDataId(String id);
+
+    List<LoanAccount> getReportsByRange(AccountReportRequest request);
 }

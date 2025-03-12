@@ -3002,7 +3002,7 @@ public class TransactionDubboServiceImpl implements TransactionDubboService {
         log.info("Transaction amount");
         BigDecimal amount = create.getAmount();
         log.info("Amount: {}", amount);
-        BigDecimal creditBalance = creditAccount.getCurrentAccountBalance();
+        BigDecimal creditBalance = creditAccount.getDebtBalance();
         log.info("Credit balance: {}", creditBalance);
         log.info("Current credit balance: {}", creditBalance.add(amount));
 
@@ -3077,7 +3077,7 @@ public class TransactionDubboServiceImpl implements TransactionDubboService {
                             .build());
             if (rsLoanCoreTransaction != null) {
 
-                log.info("Loan core transaction information: {}", rsLoanCoreTransaction);
+                log.info("Credit core transaction information: {}", rsLoanCoreTransaction);
                 if (rsLoanCoreTransaction.getBody() != null)
                     sb.append(rsLoanCoreTransaction.getBody().getReferenceCode());
             }
@@ -3161,7 +3161,7 @@ public class TransactionDubboServiceImpl implements TransactionDubboService {
         log.info("Transaction amount");
         BigDecimal amount = transaction.get().getAmount();
         log.info("Amount: {}", amount);
-        BigDecimal creditBalance = creditAccount.getCurrentAccountBalance();
+        BigDecimal creditBalance = creditAccount.getDebtBalance();
         log.info("Credit balance: {}", creditBalance);
         log.info("Current credit balance: {}", creditBalance.add(amount.negate()));
 
@@ -3346,7 +3346,7 @@ public class TransactionDubboServiceImpl implements TransactionDubboService {
             throw new DubboException("Payment amount exceeds payment balance");
         }
 
-        if (create.getAmount().compareTo(creditAccount.getCurrentAccountBalance()) > 0) {
+        if (create.getAmount().compareTo(creditAccount.getDebtBalance().abs()) > 0) {
 
             log.info("Payment amount exceeds credit balance");
             throw new DubboException("Payment amount exceeds credit balance");
@@ -3355,7 +3355,7 @@ public class TransactionDubboServiceImpl implements TransactionDubboService {
         log.info("Transaction amount");
         BigDecimal amount = create.getAmount();
         log.info("Amount: {}", amount);
-        BigDecimal creditBalance = creditAccount.getCurrentAccountBalance();
+        BigDecimal creditBalance = creditAccount.getDebtBalance();
         log.info("Credit balance: {}", creditBalance);
         log.info("Current credit balance: {}", creditBalance.add(amount.negate()));
         BigDecimal paymentBalance = paymentAccount.getCurrentAccountBalance();
@@ -3635,7 +3635,7 @@ public class TransactionDubboServiceImpl implements TransactionDubboService {
         log.info("Transaction amount");
         BigDecimal amount = transaction.get().getAmount();
         log.info("Amount: {}", amount);
-        BigDecimal creditBalance = creditAccount.getCurrentAccountBalance();
+        BigDecimal creditBalance = creditAccount.getDebtBalance();
         log.info("Credit balance: {}", creditBalance);
         log.info("Current credit balance: {}", creditBalance.add(amount));
         BigDecimal paymentBalance = paymentAccount.getCurrentAccountBalance();

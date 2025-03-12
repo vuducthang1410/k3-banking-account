@@ -1,6 +1,7 @@
 package com.system.account_service.controllers;
 
 import com.system.account_service.dtos.credit.CreateCreditDTO;
+import com.system.account_service.dtos.credit.CreditProfileDTO;
 import com.system.account_service.dtos.credit.CreditRp;
 import com.system.account_service.dtos.response.PageDataDTO;
 import com.system.account_service.handler.CreditHandler;
@@ -111,6 +112,39 @@ public class CreditController {
                 .status(status)
                 .body(webUtils.buildApiResponse(status, msg, createdData));
     }
+
+    @PostMapping("/activation/{id}")
+    @Operation(summary = "Activation Credit Account")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Created", content =
+                    {@Content(schema = @Schema(implementation = String.class))}),
+            @ApiResponse(responseCode = "400", description = "Bad Request", content =
+                    {@Content(schema = @Schema(implementation = String.class))}),
+            @ApiResponse(responseCode = "401", description = "Unauthorized", content =
+                    {@Content(schema = @Schema(implementation = String.class))}),
+            @ApiResponse(responseCode = "403", description = "Access Denied", content =
+                    {@Content(schema = @Schema(implementation = String.class))}),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error", content =
+                    {@Content(schema = @Schema(implementation = String.class))}),
+    })
+    public ResponseEntity<?> activeCredit(
+            @PathVariable(name = "id") String id,
+            @RequestBody @Valid CreditProfileDTO profile,
+            @RequestHeader("Authorization") String authToken,
+            WebRequest request
+    ) {
+        String jwtToken = authToken.substring(7);  // Loai bo `Bearer `
+        String customerId = handler.loadUserId(jwtToken);
+
+        CreditRp createdData = service.active(id, customerId, profile);
+        HttpStatus status = HttpStatus.OK;
+        String msg = localeUtils.getLocaleMsg(MessageKeys.CREDIT_ACTIVE_OK, request);
+
+        return ResponseEntity
+                .status(status)
+                .body(webUtils.buildApiResponse(status, msg, createdData));
+    }
+
 //
 //    @DeleteMapping("/{id}")
 //    @Operation(summary = "Delete Credit info")

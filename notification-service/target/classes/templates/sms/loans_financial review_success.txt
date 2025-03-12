@@ -1,0 +1,4 @@
+Kt qua danh gia tai chinh cua ban da duoc phe duyet. 
+Han muc vay: [[${approvedLimit}]]
+Het han bao cao tai chinh: [[${expiryDate}]]. 
+Vui long lien he chi nhanh hoac su dung app de bat dau quy trinh vay.

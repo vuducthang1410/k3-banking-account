@@ -17,6 +17,7 @@ public interface CustomerService {
     void deleteCustomer(String customerId);
 
     CustomerResponse updateCustomer(CustomerUpdateRequest request);
+    CustomerResponse updateCustomerAd(String customerId, CustomerUpdateRequest request);
 
     CustomerResponse getMyInfo();
     CustomerResponse updateStatus(String customerId, ObjectStatus customerStatus);

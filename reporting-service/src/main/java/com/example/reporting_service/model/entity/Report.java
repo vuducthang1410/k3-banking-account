@@ -20,25 +20,29 @@ public class Report {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "report_code", unique = true, nullable = false)
-    private String reportCode;
-
     @Enumerated(EnumType.STRING)
     @Column(name = "report_type", nullable = false)
     private ReportType reportType;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private State status;
+    @Builder.Default
+    private State status = State.PENDING; // Giá trị mặc định
 
     @Column(name = "created_by", nullable = false)
     private String createdBy;
 
     @Column(name = "created_at", updatable = false, nullable = false)
-    private LocalDateTime createdAt;
+    @Builder.Default
+    private LocalDateTime createdAt = LocalDateTime.now(); // Giá trị mặc định
+
+    @Column(name = "file_path", length = 500)
+    private String filePath; // Lưu đường dẫn file thay vì dữ liệu PDF
 
     @PrePersist
     protected void onCreate() {
+        if (this.createdAt == null) {
             this.createdAt = LocalDateTime.now();
+        }
     }
 }
