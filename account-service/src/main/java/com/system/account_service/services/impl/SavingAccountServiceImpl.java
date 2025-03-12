@@ -4,6 +4,7 @@ import com.system.account_service.client.CoreAccountClient;
 import com.system.account_service.dtos.account_common.CreateAccountCommonDTO;
 import com.system.account_service.dtos.response.PageDataDTO;
 import com.system.account_service.dtos.saving.CreateSavingDTO;
+import com.system.account_service.dtos.saving.ReportSavingByRangeDTO;
 import com.system.account_service.dtos.saving.SavingRp;
 import com.system.account_service.entities.*;
 import com.system.account_service.entities.type.AccountStatus;
@@ -15,6 +16,7 @@ import com.system.account_service.repositories.SavingRepository;
 import com.system.account_service.services.*;
 import com.system.account_service.utils.DateTimeUtils;
 import com.system.account_service.utils.MessageKeys;
+import com.system.common_library.dto.report.AccountReportRequest;
 import com.system.common_library.dto.request.account.CreateAccountCoreDTO;
 import com.system.common_library.dto.response.account.AccountCoreDTO;
 import com.system.common_library.dto.response.customer.CustomerCoreDTO;
@@ -214,6 +216,20 @@ public class SavingAccountServiceImpl implements SavingAccountService {
     public SavingAccount getDataId(String id) {
         return repository.findByAccountIdAndDeleted(id, false)
                 .orElseThrow(ResourceNotFoundException::new);
+    }
+
+    @Override
+    public List<SavingAccount> getReportsByRange(AccountReportRequest request) {
+        ReportSavingByRangeDTO reportByRange = ReportSavingByRangeDTO.builder()
+                .branchId(request.getBankBranch())
+                .startBalance(BigDecimal.valueOf(request.getStartBalance()))
+                .endBalance(BigDecimal.valueOf(request.getEndBalance()))
+                .startAt(request.getStartAt())
+                .endAt(request.getEndAt())
+                .status(AccountStatus.valueOf(request.getStatus().name()))
+                .build();
+
+        return repository.getReportsByRange(reportByRange);
     }
 
     //    Convert sang model response

@@ -15,7 +15,7 @@ import org.springframework.context.annotation.Configuration;
         servers = {
                 @Server(
                         description = "API Gateway",
-                        url = "http://localhost:8080/transaction"
+                        url = "http://localhost:8080/customer"
                 ),
                 @Server(
                         description = "Local Environment",

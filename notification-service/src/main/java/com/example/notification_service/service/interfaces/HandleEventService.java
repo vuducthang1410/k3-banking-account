@@ -33,4 +33,6 @@ public interface HandleEventService{
     boolean sendDisbursementFail(String customerCIF);
 
     boolean sendDisbursementSuccess(LoanDisbursementSuccessNoti loandisbursementsuccess);
+
+    boolean sendLoanPaymentSuccess(LoanPaymentSuccessNoti loanPaymentSuccessNoti);
 }

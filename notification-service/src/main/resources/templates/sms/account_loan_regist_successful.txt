@@ -1,0 +1,6 @@
+Tai khoan vay cua quy khach da duoc tao thanh cong.
+So tai khoan: [[${accountNumber}]]
+Ngay mo:[[${openDate}]]
+So tien can thanh toan: [[${loanDueAmount}]]
+Han thanh toan: [[${loanDueDate}]]
+Neu co bat ky thac mac nao, vui long lien he voi chung toi de duoc ho tro.

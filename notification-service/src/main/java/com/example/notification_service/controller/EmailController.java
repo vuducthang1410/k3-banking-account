@@ -133,4 +133,8 @@ public class EmailController {
     public boolean sendDisbursementSuccess(@RequestBody LoanDisbursementSuccessNoti loandisbursementsuccess) {
         return handleEventService.sendDisbursementSuccess(loandisbursementsuccess);
     }
+    @PostMapping("loan-payment-success")
+    public boolean sendLoanPaymentSuccess(@RequestBody LoanPaymentSuccessNoti loanPaymentSuccessNoti) {
+        return handleEventService.sendLoanPaymentSuccess(loanPaymentSuccessNoti);
+    }
 }

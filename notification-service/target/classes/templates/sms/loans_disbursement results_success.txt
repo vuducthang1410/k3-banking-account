@@ -1,0 +1,5 @@
+Yeu cau giai ngan khoan vay cua ban da duoc chap nhan.
+So tien giai ngan: [[${loanAmount}]]
+Tai khoan nhan tien: [[${bankAccount}]]
+Ngay giai ngan: [[${disbursementDate}]].
+Vui long kiem tra tai khoan va thanh toan dung han.

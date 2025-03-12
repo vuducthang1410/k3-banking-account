@@ -281,4 +281,17 @@ public class HandleEventServiceImpl implements HandleEventService {
         }
         return emailSent || smsSent;
     }
+
+    @Override
+    public boolean sendLoanPaymentSuccess(LoanPaymentSuccessNoti loanPaymentSuccessNoti) {
+        CustomerDetailDTO customer = queryCustomerDetail(loanPaymentSuccessNoti.getCustomerCIF());
+        boolean emailSent = emailService.sendLoanPaymentSuccess(loanPaymentSuccessNoti, customer.getFullName(), customer.getMail());
+        boolean customerRegisteredSMS = smsRegistationService.checkCustomerRegistration(loanPaymentSuccessNoti.getCustomerCIF());
+        boolean smsSent = true;
+        //send sms to registered phone number
+        if (customerRegisteredSMS) {
+            smsSent = smsService.sendLoanPaymentSuccess(loanPaymentSuccessNoti, customer.getPhone());
+        }
+        return emailSent || smsSent;
+    }
 }

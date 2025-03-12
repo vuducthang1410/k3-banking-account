@@ -77,6 +77,7 @@ public class CustomerDubboServiceImpl implements CustomerDubboService {
         return customerDubboMapper.getCustomerDetail(customer);
     }
 
+    @Override
     public List<CustomerDetailDTO> getListCustomerByCifCode(List<String> cifCode) {
         // Giả sử `customerRepository` có phương thức tìm kiếm theo `cifCode`
         List<Customer> customers = customerRepository.findByCifCodeIn(cifCode);
@@ -95,6 +96,16 @@ public class CustomerDubboServiceImpl implements CustomerDubboService {
         return customerDubboMapper.getCustomerDetail(customer);
     }
 
+    @Override
+    public List<CustomerDetailDTO> getReportCustomersByList(List<String> customerId) throws DubboException {
+        // Giả sử `customerRepository` có phương thức tìm kiếm theo `cifCode`
+        List<Customer> customers = customerRepository.findByIdIn(customerId);
+
+        // Chuyển đổi từ Customer sang CustomerDetailDTO
+        return customers.stream()
+                .map(customerDubboMapper::getCustomerDetail)
+                .collect(Collectors.toList());
+    }
 
     private String getUserIdFromToken(String token) throws ParseException, JOSEException {
         SignedJWT signedJWT = SignedJWT.parse(token);

@@ -1,0 +1,215 @@
+{
+  "sms": {
+    "TRANSACTION_SUCCESS": {
+      "template": "transaction_success.txt",
+      "description": "Sent when a transaction is successfully completed.",
+      "required": "[[${transactionCode}]],[[${debitAccount}]],[[${accountOwner}]],[[${beneficiaryAccount}]],[[${beneficiaryName}]],[[${beneficiaryBanK}]],[[${transactionDate}]],[[${debitAmount}]],[[${fee}]],[[${chargeType}]],[[${detailsOfTransaction}]]"
+    },
+
+    "CUSTOMER_REGISTRATION_SUCCESSFUL": {
+      "template": "customer_register_successful.txt",
+      "description": "Welcome sms message for newly registered customers.",
+      "required": "[[${phoneNumber}]]"
+    },
+    "OTP_VERIFICATION": {
+      "description": "sms message containing a verification code for account authentication.",
+      "template": "sendotp.txt",
+      "required": "[[${otp}]],[[${expiredTime}]]"
+    },
+    "CUSTOMER_INFORMATION_UPDATE": {
+      "description": "Confirmation sms message sent when a customer updates their personal information.",
+      "template": "customer_information_update.txt",
+      "required": "[[${customerfullname}]],[[${phoneNumber}]],[[${address}]],[[${emailAddress}]]"
+    },
+    "ACCOUNT_LOAN_REGISTER_SUCCESSFUL": {
+      "description": "Notification sms message confirming the successful registration of a loan account.",
+      "template": "account_loan_regist_successful.txt",
+      "required": "[[${accountNumber}]],[[${openDate}]],[[${loanDueAmount}]],[[${loanDueDate}]]"
+    },
+    "CUSTOMER_WELCOME": {
+      "description": "A welcome sms message introducing new customers to KienlongBank.",
+      "template": "customer_welcome_to_banking.txt",
+      "required": "[[${customerfullname}]],[[${phoneNumber}]]"
+    },
+    "LOAN_REMIND_DEADLINE": {
+      "description": "Reminder sms message notifying customers about an upcoming loan payment deadline.",
+      "template": "loan_remind_deadline.txt",
+      "required": "[[${contractNumber}]],[[${amountDue}]],[[${dueDate}]]"
+    },
+    "TRANSACTION_SUSPICIOUS": {
+      "description": "Alert sms message notifying customers of a suspicious transaction for security verification.",
+      "template": "transaction_suspicious.txt",
+      "required": "[[${accountNumber}]],[[${transactionTime}]],[[${transactionAmount}]]"
+    },
+    "LOAN_DISBURSEMENT_SUCCESS": {
+      "description": "Notification sms message confirming that the customer's loan has been successfully disbursed.",
+      "template": "loans_disbursement results_success.txt",
+      "required": "[[${loanAmount}]],[[${bankAccount}]],[[${disbursementDate}]]"
+    },
+    "LOAN_DISBURSEMENT_FAIL": {
+      "description": "Notification sms message informing the customer that their loan disbursement request was declined.",
+      "template": "loans_disbursement results_fail.txt"
+    },
+    "LOAN_FINANCIAL_REVIEW_SUCCESS": {
+      "description": "Notification sms message confirming that the customer's financial review was successful and is valid for loan application.",
+      "template": "loans_financial review_success.txt",
+      "required": "[[${approvedLimit}]],[[${expiryDate}]]"
+    },
+    "LOAN_FINANCIAL_REVIEW_FAIL": {
+      "description": "Notification sms message informing the customer that their financial review did not meet the required criteria for loan application.",
+      "template": "loans_financial review_fail.txt",
+      "required": "[[${expiryDate}]]"
+    },
+    "LOAN_COMPLETION": {
+      "description": "Notification sms message confirming that the customer has successfully paid off their loan in full and that their loan account is now closed.",
+      "template": "loan_completion.txt",
+      "required": "[[${contractNumber}]],[[${amountPaid}]],[[${settlementDate}]]"
+    },
+    "LOAN_OVERDUE_DEPT": {
+      "description": "Warning sms message notifying the customer that their loan payment is overdue, urging immediate action to avoid penalties or negative credit impact.",
+      "template": "loan_overdue_dept.txt",
+      "required": "[[${contractNumber}]],[[${amountDue}]],[[${dueDate}]],[[${overdueDays}]],[[${penaltyFee}]]"
+    },
+    "ACCOUNT_SAVINGS_REGISTER_SUCCESSFUL": {
+      "description": "Notification sms message confirming the successful opening of a savings account, including account details, deposit amount, and interest rate.",
+      "template": "account_savings_regist_successful.txt",
+      "required": "[[${accountNumber}]],[[${depositAmount}]],[[${term}]],[[${interestRate}]],[[${openDate}]]"
+
+    },
+    "ACCOUNT_PAYMENT_REGISTER_SUCCESSFUL": {
+      "description": "Notification sms message confirming the successful opening of a payment account, allowing transactions and fund transfers.",
+      "template": "account_payment_regist_successful.txt",
+      "required": "[[${accountNumber}]],[[${openDate}]]"
+
+    },
+    "TRANSACTION_FAIL": {
+      "template": "transaction_fail.txt",
+      "description": "Sent when a transaction is encountered an error.",
+      "required": "[[${transactionCode}]],[[${debitAccount}]],[[${accountOwner}]],[[${beneficiaryAccount}]],[[${beneficiaryName}]],[[${beneficiaryBanK}]],[[${transactionDate}]],[[${debitAmount}]],[[${fee}]],[[${chargeType}]],[[${detailsOfTransaction}]]"
+    },
+    "LOAN_PAYMENT_SUCCESSFUL": {
+      "description": "Notification email announce successful payment for a loans.",
+      "template": "loans_payment successful.txt",
+      "required": "[[${paymentAmount}]],[[${paymentType}]],[[${loanContractNumber}]],[[${paymentDate}]]"
+    }
+  },
+  "email": {
+    "TRANSACTION_SUCCESS": {
+      "template": "transaction_success.html",
+      "description": "Sent when a transaction is successfully completed.",
+      "title":"KienlongBank: Giao dịch thành công/ Transaction successful",
+      "required": "[[${customerfullname}]],[[${customerfullname}]],[[${transactionType}]],[[${transactionCode}]],[[${debitAccount}]],[[${accountOwner}]],[[${beneficiaryAccount}]],[[${beneficiaryName}]],[[${beneficiaryBanK}]],[[${transactionDate}]],[[${debitAmount}]],[[${detailsOfTransaction}]],[[${fee}]],[[${chargeType}]]"
+    },
+    "TRANSACTION_FAIL": {
+      "template": "transaction_fail.html",
+      "description": "Sent when a transaction is encountered an error.",
+      "title":"KienlongBank: Giao dịch không thành công/ Transaction fail",
+      "required": "[[${customerfullname}]],[[${customerfullname}]],[[${transactionType}]],[[${transactionCode}]],[[${debitAccount}]],[[${accountOwner}]],[[${beneficiaryAccount}]],[[${beneficiaryName}]],[[${beneficiaryBanK}]],[[${transactionDate}]],[[${debitAmount}]],[[${detailsOfTransaction}]],[[${fee}]],[[${chargeType}]]"
+    },
+    "CUSTOMER_REGISTRATION_SUCCESSFUL": {
+      "template": "customer_register_successful.html",
+      "description": "Welcome email for newly registered customers.",
+      "title": "KienlongBank: Mở dịch vụ ngân hàng số KienlongBank thành công/ KienlongBank Digital Banking registration successful",
+      "required": "[[${customerfullname}]],[[${customerfullname}]],[[${phoneNumber}]],[[${phoneNumber}]]"
+    },
+    "OTP_VERIFICATION": {
+      "title": "KienlongBank: Mã xác thực/Verification code",
+      "description": "Email containing a verification code for account authentication.",
+      "template": "sendotp.html",
+      "required": "[[${customerfullname}]],[[${customerfullname}]],[[${otp}]],[[${expiredTime}]],[[${otp}]],[[${expiredTime}]]"
+    },
+    "CUSTOMER_INFORMATION_UPDATE": {
+      "title": "KienlongBank: Cập nhật thông tin khách hàng/ Customer Information Update",
+      "description": "Confirmation email sent when a customer updates their personal information.",
+      "template": "customer_information_update.html",
+      "required": "[[${customerfullname}]],[[${customerfullname}]],[[${customerfullname}]],[[${customerfullname}]],[[${phoneNumber}]],[[${phoneNumber}]],[[${address}]],[[${address}]],[[${emailAddress}]],[[${emailAddress}]]"
+    },
+    "ACCOUNT_LOAN_REGISTER_SUCCESSFUL": {
+      "title": "KienlongBank: Đăng ký khoản vay thành công/ Loan Registration Successful",
+      "description": "Notification email confirming the successful registration of a loan account.",
+      "template": "account_loan_regist_successful.html",
+      "required": "[[${customerfullname}]],[[${customerfullname}]],[[${accountNumber}]],[[${accountNumber}]],[[${openDate}]],[[${openDate}]],[[${loanDueAmount}]],[[${loanDueAmount}]],[[${loanDueDate}]],[[${loanDueDate}]]"
+    },
+    "CUSTOMER_WELCOME": {
+      "title": "KienlongBank: Chào mừng Quý khách/ Welcome to KienlongBank",
+      "description": "A welcome email introducing new customers to KienlongBank.",
+      "template": "customer_welcome_to_banking.html",
+      "required": "[[${customerfullname}]],[[${customerfullname}]],[[${customerfullname}]],[[${customerfullname}]],[[${phoneNumber}]],[[${phoneNumber}]]"
+    },
+    "LOAN_REMIND_DEADLINE": {
+      "title": "KienlongBank: Nhắc nhở hạn thanh toán khoản vay/ Loan Payment Deadline Reminder",
+      "description": "Reminder email notifying customers about an upcoming loan payment deadline.",
+      "template": "loan_remind_deadline.html",
+      "required": "[[${customerfullname}]],[[${customerfullname}]],[[${contractNumber}]],[[${contractNumber}]],[[${amountDue}]],[[${amountDue}]],[[${dueDate}]],[[${dueDate}]]"
+    },
+    "TRANSACTION_SUSPICIOUS": {
+      "title": "KienlongBank: Cảnh báo giao dịch đáng ngờ/ Suspicious Transaction Alert",
+      "description": "Alert email notifying customers of a suspicious transaction for security verification.",
+      "template": "transaction_suspicious.html",
+      "required": "[[${customerfullname}]],[[${customerfullname}]],[[${accountNumber}]],[[${accountNumber}]],[[${transactionTime}]],[[${transactionTime}]],[[${transactionAmount}]],[[${transactionAmount}]]"
+    },
+    "LOAN_DISBURSEMENT_SUCCESS": {
+      "title": "KienlongBank: Giải ngân thành công/ Loan Disbursement Successful",
+      "description": "Notification email confirming that the customer's loan has been successfully disbursed.",
+      "template": "loans_disbursement results_success.html",
+      "required": "[[${customerfullname}]],[[${customerfullname}]],[[${loanAmount}]],[[${loanAmount}]],[[${bankAccount}]],[[${bankAccount}]],[[${disbursementDate}]],[[${disbursementDate}]]"
+    },
+    "LOAN_DISBURSEMENT_FAIL": {
+      "title": "KienlongBank: Giải ngân không thành công/ Loan Disbursement Failed",
+      "description": "Notification email informing the customer that their loan disbursement request was declined.",
+      "template": "loans_disbursement results_fail.html",
+      "required": "[[${customerfullname}]]"
+    },
+    "LOAN_FINANCIAL_REVIEW_SUCCESS": {
+      "title": "KienlongBank: Đánh giá tài chính thành công/ Financial Review Successful",
+      "description": "Notification email confirming that the customer's financial review was successful and is valid for loan application.",
+      "template": "loans_financial review_success.html",
+      "required": "[[${customerfullname}]],[[${customerfullname}]],[[${approvedLimit}]],[[${approvedLimit}]],[[${expiryDate}]],[[${expiryDate}]],[[${expiryDate}]],[[${expiryDate}]]"
+    },
+    "LOAN_FINANCIAL_REVIEW_FAIL": {
+      "title": "KienlongBank: Đánh giá tài chính không thành công/ Financial Review Failed",
+      "description": "Notification email informing the customer that their financial review did not meet the required criteria for loan application.",
+      "template": "loans_financial review_fail.html",
+      "required": "[[${customerfullname}]],[[${customerfullname}]],[[${expiryDate}]],[[${expiryDate}]],[[${expiryDate}]]"
+    },
+    "LOAN_COMPLETION": {
+      "title": "KienlongBank: Hoàn tất khoản vay/ Loan Fully Paid Off",
+      "description": "Notification email confirming that the customer has successfully paid off their loan in full and that their loan account is now closed.",
+      "template": "loan_completion.html",
+      "required": "[[${customerfullname}]],[[${customerfullname}]],[[${contractNumber}]],[[${contractNumber}]],[[${amountPaid}]],[[${amountPaid}]],[[${settlementDate}]],[[${settlementDate}]]"
+    },
+    "LOAN_OVERDUE_DEPT": {
+      "title": "KienlongBank: Cảnh báo nợ quá hạn/ Overdue Debt Warning",
+      "description": "Warning email notifying the customer that their loan payment is overdue, urging immediate action to avoid penalties or negative credit impact.",
+      "template": "loan_overdue_dept.html",
+      "required": "[[${customerfullname}]],[[${customerfullname}]],[[${contractNumber}]],[[${contractNumber}]],[[${amountDue}]],[[${amountDue}]],[[${dueDate}]],[[${dueDate}]],[[${overdueDays}]],[[${overdueDays}]],[[${penaltyFee}]],[[${penaltyFee}]]"
+    },
+    "ACCOUNT_SAVINGS_REGISTER_SUCCESSFUL": {
+      "title": "KienlongBank: Mở tài khoản tiết kiệm thành công/ Savings Account Opened Successfully",
+      "description": "Notification email confirming the successful opening of a savings account, including account details, deposit amount, and interest rate.",
+      "template": "account_savings_regist_successful.html",
+      "required": "[[${customerfullname}]],[[${customerfullname}]],[[${accountNumber}]],[[${accountNumber}]],[[${depositAmount}]],[[${depositAmount}]],[[${term}]],[[${term}]],[[${interestRate}]],[[${interestRate}]],[[${openDate}]],[[${openDate}]]"
+
+    },
+    "ACCOUNT_PAYMENT_REGISTER_SUCCESSFUL": {
+      "title": "KienlongBank: Mở tài khoản thanh toán thành công/ Payment Account Opened Successfully",
+      "description": "Notification email confirming the successful opening of a payment account, allowing transactions and fund transfers.",
+      "template": "account_payment_regist_successful.html",
+      "required": "[[${customerfullname}]],[[${customerfullname}]],[[${accountNumber}]],[[${accountNumber}]],[[${openDate}]],[[${openDate}]]"
+
+    },
+    "LOAN_PAYMENT_SUCCESSFUL": {
+      "title": "KienlongBank: thanh toán khoản vay thành công/ Payment Loan Dept Successfully",
+      "description": "Notification email announce successful payment for a loans.",
+      "template": "loans_payment successful.html",
+      "required": "[[${customerfullname}]],[[${paymentAmount}]],[[${paymentType}]],[[${loanContractNumber}]],[[${paymentDate}]]"
+    }
+  },
+  "system": {
+    "BALANCE_FLUCTUATION": {
+      "description": "System notification for balance fluctuation when transaction occur",
+      "template": "balance_fluctuation.txt",
+      "required": "[[${accountNumber}]],[[${transactionAmount}]],[[${balance}]],[[${transactionContent}]],[[${transactionTime}]]"
+    }
+  }
+}

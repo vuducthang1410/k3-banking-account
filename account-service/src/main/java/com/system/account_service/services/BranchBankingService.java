@@ -17,5 +17,7 @@ public interface BranchBankingService {
 
     BranchBanking findById(String id);
 
-    PageDataDTO<BranchBanking> findAll(Integer page, Integer pageSize);
+    PageDataDTO<BranchBanking> findPagination(Integer page, Integer pageSize);
+
+    List<BranchBanking> findAll();
 }

@@ -9,13 +9,18 @@ import com.system.account_service.services.CreditAccountService;
 import com.system.account_service.utils.MessageKeys;
 import com.system.common_library.dto.response.customer.CustomerCoreDTO;
 import com.system.common_library.dto.user.CustomerDetailDTO;
+import com.system.common_library.dto.user.UserDetailDTO;
 import com.system.common_library.enums.ObjectStatus;
 import com.system.common_library.service.CustomerDubboService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.text.ParseException;
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CreditHandler {
@@ -60,5 +65,16 @@ public class CreditHandler {
         }
 
         return service.create(coreCustomer, customer, data);
+    }
+
+    public String loadUserId(String token) {
+        try {
+            UserDetailDTO user = customerDubboService.loadUserByToken(token);
+            return user.getId();
+        }
+        catch (ParseException e) {
+            log.error(e.getMessage());
+            throw new InvalidParamException(MessageKeys.INVALID_TOKEN);
+        }
     }
 }

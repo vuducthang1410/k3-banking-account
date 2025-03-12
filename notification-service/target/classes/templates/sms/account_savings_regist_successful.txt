@@ -1,0 +1,7 @@
+Tai khoan tiet kiem cua quy khach da duoc tao thanh cong.
+So tai khoan: [[${accountNumber}]]
+So tien gui: [[${depositAmount}]]
+Ky han: [[${term}]]
+Lai suat: [[${interestRate}]]
+Ngay mo tai khoan: [[${openDate}]]
+Neu co bat ky thac mac nao, vui long lien he voi chung toi de duoc ho tro.

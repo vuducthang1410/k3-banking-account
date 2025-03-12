@@ -1,0 +1,4 @@
+Quy khach da tro thanh khach hang cua KienlongBank!
+Ho va ten: [[${customerfullname}]]
+Ten dang nhap: [[${phoneNumber}]]
+Vui long dang nhap va giao dich chi tren ung dung KienlongBank Mobile Banking.

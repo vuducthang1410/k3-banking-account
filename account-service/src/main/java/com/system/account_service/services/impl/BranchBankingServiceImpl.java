@@ -68,7 +68,7 @@ public class BranchBankingServiceImpl implements BranchBankingService {
     }
 
     @Override
-    public PageDataDTO<BranchBanking> findAll(Integer page, Integer pageSize) {
+    public PageDataDTO<BranchBanking> findPagination(Integer page, Integer pageSize) {
         Pageable pageable = PageRequest.of(page-1, pageSize, Sort.by("createdAt"));
         Page<BranchBanking> pageData = repository.findAllByDeleted(false, pageable);
         List<BranchBanking> listData = pageData.stream().toList();
@@ -77,5 +77,10 @@ public class BranchBankingServiceImpl implements BranchBankingService {
                 .total(pageData.getTotalElements())
                 .listData(listData)
                 .build();
+    }
+
+    @Override
+    public List<BranchBanking> findAll() {
+        return repository.findAll();
     }
 }

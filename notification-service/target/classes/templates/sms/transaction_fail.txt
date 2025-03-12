@@ -1,0 +1,9 @@
+THONG BAO GIAO DICH KHONG THANH CONG
+Ma giao dich: [[${transactionCode}]]
+Tu tai khoan: [[${debitAccount}]] [[${accountOwner}]]
+Den tai khoan: [[${beneficiaryAccount}]] [[${beneficiaryName}]] tai [[${beneficiaryBanK}]]
+Thoi gian: [[${transactionDate}]]
+So tien: [[${debitAmount}]]
+Phi giao dich: [[${fee}]]
+Loai phi: [[${chargeType}]]
+Chi tiet: [[${detailsOfTransaction}]]

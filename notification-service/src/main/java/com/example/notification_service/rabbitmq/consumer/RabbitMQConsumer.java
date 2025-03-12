@@ -20,36 +20,36 @@ public class RabbitMQConsumer {
       log.info("Received message -> {}", customerDetailDTO.toString());
       return handleEventService.sendWelcomeCustomerMessage(customerDetailDTO);
     }
-//    @RabbitListener(queues = {"${rabbitmq.queue.consumer.transaction.suspicious}"})
-//    public boolean sendTransactionSuspicious(TransactionSuspiciousNoti transactionSuspicious) {
-//        log.info("Transaction Suspicious Queue");
-//        log.info("Received message -> {}", transactionSuspicious.toString());
-//        return handleEventService.sendTransactionSuspicious(transactionSuspicious);
-//    }
+    @RabbitListener(queues = {"${rabbitmq.queue.consumer.transaction.suspicious}"})
+    public boolean sendTransactionSuspicious(TransactionSuspiciousNoti transactionSuspicious) {
+        log.info("Transaction Suspicious Queue");
+        log.info("Received message -> {}", transactionSuspicious.toString());
+        return handleEventService.sendTransactionSuspicious(transactionSuspicious);
+    }
     @RabbitListener(queues = {"${rabbitmq.queue.consumer.customer.update}"})
     public boolean sendCustomerUpdateInformation(CustomerDetailDTO customerDetail ) {
         log.info("Customer Information Update Queue");
         log.info("Received message -> {}", customerDetail.toString());
         return handleEventService.sendUpdateCustomerInformation(customerDetail);
     }
-//    @RabbitListener(queues = {"${rabbitmq.queue.consumer.account.create.savings}"})
-//    public boolean sendAccountSavingsRegisterSuccessful(SavingAccountNoti savingAccount) {
-//        log.info("Account Service Create Savings Account Successful Queue");
-//        log.info("Received message -> {}", savingAccount.toString());
-//        return handleEventService.sendAccountSavingRegister(savingAccount);
-//    }
-//    @RabbitListener(queues = {"${rabbitmq.queue.consumer.account.create.payment}"})
-//    public boolean sendAccountPaymentRegisterSuccessful(PaymentAccountNoti paymentAccount) {
-//        log.info("Account Service Create Payment Account Successful Queue");
-//        log.info("Received message -> {}", paymentAccount.toString());
-//        return handleEventService.sendAccountPaymentRegisterSuccessful(paymentAccount);
-//    }
-//    @RabbitListener(queues = {"${rabbitmq.queue.consumer.loan.create.account}"})
-//    public boolean sendAccountLoanRegisterSuccessful(LoanAccountNoti loanAccount) {
-//        log.info("Loan Service Create Loan Account Successful Queue");
-//        log.info("Received message -> {}", loanAccount.toString());
-//        return handleEventService.sendAccountLoanRegisterSuccessful(loanAccount);
-//    }
+    @RabbitListener(queues = {"${rabbitmq.queue.consumer.account.create.savings}"})
+    public boolean sendAccountSavingsRegisterSuccessful(SavingAccountNoti savingAccount) {
+        log.info("Account Service Create Savings Account Successful Queue");
+        log.info("Received message -> {}", savingAccount.toString());
+        return handleEventService.sendAccountSavingRegister(savingAccount);
+    }
+    @RabbitListener(queues = {"${rabbitmq.queue.consumer.account.create.payment}"})
+    public boolean sendAccountPaymentRegisterSuccessful(PaymentAccountNoti paymentAccount) {
+        log.info("Account Service Create Payment Account Successful Queue");
+        log.info("Received message -> {}", paymentAccount.toString());
+        return handleEventService.sendAccountPaymentRegisterSuccessful(paymentAccount);
+    }
+    @RabbitListener(queues = {"${rabbitmq.queue.consumer.loan.create.account}"})
+    public boolean sendAccountLoanRegisterSuccessful(LoanAccountNoti loanAccount) {
+        log.info("Loan Service Create Loan Account Successful Queue");
+        log.info("Received message -> {}", loanAccount.toString());
+        return handleEventService.sendAccountLoanRegisterSuccessful(loanAccount);
+    }
     @RabbitListener(queues = {"${rabbitmq.queue.consumer.loan.approval.success}"})
     public boolean sendLoanFinancialReviewSuccess(LoanFinancialReviewSuccessNoti loanFinancialReviewSuccess) {
         log.info("Loan Financial Review Success Queue");
@@ -92,5 +92,10 @@ public class RabbitMQConsumer {
         log.info("Received message -> {}", loandisbursementsuccess.toString());
         return handleEventService.sendDisbursementSuccess(loandisbursementsuccess);
     }
-
+    @RabbitListener(queues = {"${rabbitmq.queue.consumer.loan.payment.success}"})
+    public boolean sendLoanPaymentSuccess(LoanPaymentSuccessNoti loanPaymentSuccessNoti) {
+        log.info("Loan Completion Queue");
+        log.info("Received message -> {}", loanPaymentSuccessNoti.toString());
+        return handleEventService.sendLoanPaymentSuccess(loanPaymentSuccessNoti);
+    }
 }

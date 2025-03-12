@@ -1,0 +1,6 @@
+Thanh toan khoan vay cua ban thanh cong.
+So tien: [[${paymentAmount}]]
+Loai thanh toan: [[${paymentType}]]
+So hop dong: [[${loanContractNumber}]]
+Ngay thanh toan: [[${paymentDate}]]
+Vui long kiem tra tai khoan va dam bao thanh toan dung han.

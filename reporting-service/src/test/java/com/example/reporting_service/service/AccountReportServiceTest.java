@@ -20,7 +20,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -33,7 +32,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class AccountReportServiceTest {
 
-    @InjectMocks  // Tự động tiêm mock vào accountReportService
+    @InjectMocks
     private AccountReportService accountReportService;
 
     @Mock
@@ -46,73 +45,52 @@ class AccountReportServiceTest {
     private TransactionDubboService transactionDubboService;
 
     @Mock
-    private ReportStatusService reportStatusService;
+    private ReportService reportService;
+
+    @Mock
+    private FilebaseStorageService filebaseStorageService;
 
     @Test
     void testCreateAccountReport() throws Exception {
-        // Giả lập dữ liệu đầu vào
         PersonalAccountRequest mockRequest = new PersonalAccountRequest();
         mockRequest.setAccount("12345");
         mockRequest.setAccountType(AccountType.SAVINGS);
         mockRequest.setCustomerId("CUST001");
-        LocalDateTime startDate = LocalDateTime.parse("2025-01-01T00:00:00");
-        LocalDateTime endDate = LocalDateTime.parse("2025-03-01T00:00:00");
-        mockRequest.setStartTransactionDate(startDate);
-        mockRequest.setEndTransactionDate(endDate);
 
-        // Giả lập các service trả về dữ liệu giả
         AccountReportResponse mockAccountDetail = MockGrpcAccountResponse.getSingleMockAccountReport();
         CustomerDetailDTO mockCustomerDetail = MockGrpcCustomerResponse.getSingleMockCustomer();
         List<TransactionReportDTO> mockTransactions = MockGrpcTransactionResponse.generateMockTransactions(5);
 
-        // Giả lập các phương thức trong các dịch vụ
         when(accountDubboService.getReportAccount(any(), any())).thenReturn(mockAccountDetail);
         when(customerDubboService.getCustomerByCustomerId(any())).thenReturn(mockCustomerDetail);
         when(transactionDubboService.getTransactionByFilter(any())).thenReturn(mockTransactions);
-        when(reportStatusService.createReport(any())).thenReturn(new Report()); // Trả về đối tượng báo cáo mock
+        when(reportService.createReport(any(), any())).thenReturn(new Report());
+        when(filebaseStorageService.uploadFile(any(), any())).thenReturn("https://filebase.com/mock_report.pdf");
 
-        // Gọi phương thức cần test
-        byte[] resultPdf = accountReportService.createAccountReport(mockRequest);
+        String fileUrl = accountReportService.createAccountReport(mockRequest);
 
-        // Kiểm tra kết quả trả về (file PDF không null và có nội dung)
-        assertNotNull(resultPdf);
-        assertTrue(resultPdf.length > 0);
+        assertNotNull(fileUrl);
+        assertTrue(fileUrl.startsWith("https://filebase.com/"));
 
-        // Kiểm tra xem các phương thức đã được gọi đúng
-        verify(accountDubboService).getReportAccount(any(), any());
-        verify(customerDubboService).getCustomerByCustomerId(any());
-        verify(transactionDubboService).getTransactionByFilter(any());
-        verify(reportStatusService).createReport(any());
-        verify(reportStatusService).updateReportStatus(any(), eq(State.COMPLETED));
+        verify(reportService).updateReportStatus(any(), eq(State.COMPLETED), any());
     }
 
     @Test
     void testCreateAccountsReportByFilter() throws Exception {
-        // Giả lập dữ liệu đầu vào
         AccountsFilterRequest mockRequest = new AccountsFilterRequest();
-        // Set dữ liệu cho mockRequest nếu cần
-
         List<AccountReportResponse> mockAccounts = MockGrpcAccountResponse.generateMockAccountReports(20);
         List<CustomerDetailDTO> mockCustomers = MockGrpcCustomerResponse.generateMockCustomers(20);
 
-        // Giả lập các service trả về dữ liệu giả
         when(accountDubboService.getReportAccounts(any())).thenReturn(mockAccounts);
         when(customerDubboService.getReportCustomersByList(any())).thenReturn(mockCustomers);
-        when(reportStatusService.createReport(any())).thenReturn(new Report()); // Trả về đối tượng báo cáo mock
+        when(reportService.createReport(any(), any())).thenReturn(new Report());
+        when(filebaseStorageService.uploadFile(any(), any())).thenReturn("https://filebase.com/mock_list_report.pdf");
 
-        // Gọi phương thức cần test
-        byte[] resultPdf = accountReportService.createAccountsReportByFilter(mockRequest);
+        String fileUrl = accountReportService.createAccountsReportByFilter(mockRequest);
 
-        // Kiểm tra kết quả trả về (file PDF không null và có nội dung)
-        assertNotNull(resultPdf);
-        assertTrue(resultPdf.length > 0);
+        assertNotNull(fileUrl);
+        assertTrue(fileUrl.startsWith("https://filebase.com/"));
 
-        // Kiểm tra xem các phương thức đã được gọi đúng
-        verify(accountDubboService).getReportAccounts(any());
-        verify(customerDubboService).getReportCustomersByList(any());
-        verify(reportStatusService).createReport(any());
-        verify(reportStatusService).updateReportStatus(any(), eq(State.COMPLETED));
+        verify(reportService).updateReportStatus(any(), eq(State.COMPLETED), any());
     }
-
-
 }

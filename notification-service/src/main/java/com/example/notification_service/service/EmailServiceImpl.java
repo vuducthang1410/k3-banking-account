@@ -213,4 +213,13 @@ public class EmailServiceImpl implements EmailService {
         variables.put("customerfullname", customerfullname);
         return processSendEmail(email, variables, Template.LOAN_DISBURSEMENT_SUCCESS);
     }
+
+    @Override
+    public boolean sendLoanPaymentSuccess(LoanPaymentSuccessNoti loanPaymentSuccessNoti, String customerfullname, String email) {
+        Map<String,Object> variables = objectConverter.convertToMap(loanPaymentSuccessNoti);
+        variables.put("paymentDate", objectConverter.getDate(loanPaymentSuccessNoti.getPaymentDate()));
+        variables.put("paymentAmount", objectConverter.getMoneyFormat(loanPaymentSuccessNoti.getPaymentAmount()));
+        variables.put("customerfullname", customerfullname);
+        return processSendEmail(email, variables, Template.LOAN_PAYMENT_SUCCESSFUL);
+    }
 }

@@ -1,0 +1,6 @@
+CANH BAO GIAO DICH
+Chung toi phat hien giao dich dang ngo tren tai khoan [[${accountNumber}]].
+Thoi gian: [[${transactionTime}]]
+So tien: [[${transactionAmount}]]
+
+Neu quy khach KHONG thuc hien, vui long lien he tong dai ho tro ngay.

@@ -32,7 +32,10 @@ import java.util.Optional;
 @Service
 public class LoanReportService {
     @Autowired
-    private ReportStatusService reportStatusService;
+    private ReportService reportService;
+
+    @Autowired
+    private FilebaseStorageService filebaseStorageService;
 
     @DubboReference
     private LoanDubboService loanDubboService;
@@ -43,42 +46,88 @@ public class LoanReportService {
     @DubboReference
     private AccountDubboService accountDubboService;
 
-    public byte[] createLoanReport(PersonalLoanRequest request) throws Exception {
-        Report report = reportStatusService.createReport(ReportType.LOAN);
-        LoanReportResponse loan = Optional.ofNullable(
-                loanDubboService.getLoanReport(request.getLoanId())
-        ).orElseThrow(() -> new Exception("error.dubbo.service_unavailable"));
-        AccountReportResponse accountDetail = Optional.ofNullable(
-                accountDubboService.getReportAccount(request.getAccount(), request.getAccountType())
-        ).orElseThrow(() -> new Exception("error.dubbo.service_unavailable"));
-        CustomerDetailDTO customerDetail = Optional.ofNullable(
-                customerDubboService.getCustomerByCustomerId(request.getCustomerId())
-        ).orElseThrow(() -> new Exception("error.dubbo.service_unavailable"));
-        byte[] pdfFile = generateLoanReportPdf(loan, accountDetail, customerDetail);
-        reportStatusService.updateReportStatus(report.getId(), State.COMPLETED);
-        return pdfFile;
+    public String createLoanReport(PersonalLoanRequest request) throws Exception {
+        // 1. Tạo report với trạng thái PENDING
+        Report report = reportService.createReport(ReportType.LOAN, request.getCustomerId());
+
+        try {
+            // 2. Lấy dữ liệu khoản vay
+            LoanReportResponse loan = Optional.ofNullable(
+                    loanDubboService.getLoanReport(request.getLoanId())
+            ).orElseThrow(() -> new Exception("error.dubbo.service_unavailable"));
+
+            // 3. Lấy dữ liệu tài khoản liên quan
+            AccountReportResponse accountDetail = Optional.ofNullable(
+                    accountDubboService.getReportAccount(request.getAccount(), request.getAccountType())
+            ).orElseThrow(() -> new Exception("error.dubbo.service_unavailable"));
+
+            // 4. Lấy dữ liệu khách hàng liên quan
+            CustomerDetailDTO customerDetail = Optional.ofNullable(
+                    customerDubboService.getCustomerByCustomerId(request.getCustomerId())
+            ).orElseThrow(() -> new Exception("error.dubbo.service_unavailable"));
+
+            // 5. Tạo file PDF
+            byte[] pdfFile = generateLoanReportPdf(loan, accountDetail, customerDetail);
+
+            // 6. Upload file PDF lên Filebase
+            String fileName = PdfLayout.generateReportFileName(ReportType.LOAN);
+            String fileUrl = filebaseStorageService.uploadFile(pdfFile, fileName);
+
+            // 7. Cập nhật trạng thái & lưu đường dẫn file vào DB
+            reportService.updateReportStatus(report.getId(), State.COMPLETED, fileUrl);
+
+            // 8. Trả về đường dẫn file PDF
+            return fileUrl;
+        } catch (Exception e) {
+            // Nếu có lỗi, cập nhật trạng thái FAILED
+            reportService.updateReportStatus(report.getId(), State.FAILED, null);
+            throw new Exception("error.report.generation_failed", e);
+        }
     }
 
-    public byte[] createLoansReportByFilter(LoansFilterRequest request) throws Exception {
-        LoanReportRequest gRpcRequest = LoanReportRequest.builder()
-                .loanId(request.getLoanId())
-                .customerId(request.getCustomerId())
-                .minLoanAmount(request.getMinLoanAmount())
-                .maxLoanAmount(request.getMaxLoanAmount())
-                .loanType(request.getLoanType())
-                .startDate(request.getStartAccountDate())
-                .endDate(request.getEndAccountDate())
-                .loanStatus(request.getLoanStatus())
-                .build();
-        Report report = reportStatusService.createReport(ReportType.LOAN);
-        List<LoanReportResponse> loans = Optional.ofNullable(
-                        loanDubboService.getListLoanByField(gRpcRequest)
-                ).filter(list -> !list.isEmpty())
-                .orElseThrow(() -> new DubboException("error.dubbo.service_unavailable"));
-        byte[] pdfFile = generateLoansReportPdf(loans);
-        reportStatusService.updateReportStatus(report.getId(), State.COMPLETED);
-        return pdfFile;
+
+    public String createLoansReportByFilter(LoansFilterRequest request) throws Exception {
+        // 1. Tạo report với trạng thái PENDING
+        Report report = reportService.createReport(ReportType.LOAN_LIST, request.getCustomerId());
+
+        try {
+            // 2. Chuẩn bị request cho gRPC
+            LoanReportRequest gRpcRequest = LoanReportRequest.builder()
+                    .loanId(request.getLoanId())
+                    .customerId(request.getCustomerId())
+                    .minLoanAmount(request.getMinLoanAmount())
+                    .maxLoanAmount(request.getMaxLoanAmount())
+                    .loanType(request.getLoanType())
+                    .startDate(request.getStartAccountDate())
+                    .endDate(request.getEndAccountDate())
+                    .loanStatus(request.getLoanStatus())
+                    .build();
+
+            // 3. Gọi gRPC lấy danh sách khoản vay
+            List<LoanReportResponse> loans = Optional.ofNullable(
+                            loanDubboService.getListLoanByField(gRpcRequest)
+                    ).filter(list -> !list.isEmpty())
+                    .orElseThrow(() -> new DubboException("error.dubbo.service_unavailable"));
+
+            // 4. Tạo file PDF
+            byte[] pdfFile = generateLoansReportPdf(loans);
+
+            // 5. Upload file PDF lên Filebase
+            String fileName = PdfLayout.generateReportFileName(ReportType.LOAN_LIST);
+            String fileUrl = filebaseStorageService.uploadFile(pdfFile, fileName);
+
+            // 6. Cập nhật trạng thái & lưu đường dẫn vào DB
+            reportService.updateReportStatus(report.getId(), State.COMPLETED, fileUrl);
+
+            // 7. Trả về đường dẫn file PDF
+            return fileUrl;
+        } catch (Exception e) {
+            // Nếu có lỗi, cập nhật trạng thái FAILED
+            reportService.updateReportStatus(report.getId(), State.FAILED, null);
+            throw new Exception("error.report.generation_failed", e);
+        }
     }
+
 
     private byte[] generateLoanReportPdf(LoanReportResponse loan,
                                                AccountReportResponse accountDetail,

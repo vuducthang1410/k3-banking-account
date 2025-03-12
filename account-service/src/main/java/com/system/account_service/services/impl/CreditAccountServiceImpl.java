@@ -3,7 +3,9 @@ package com.system.account_service.services.impl;
 import com.system.account_service.client.CoreAccountClient;
 import com.system.account_service.dtos.account_common.CreateAccountCommonDTO;
 import com.system.account_service.dtos.credit.CreateCreditDTO;
+import com.system.account_service.dtos.credit.CreditProfileDTO;
 import com.system.account_service.dtos.credit.CreditRp;
+import com.system.account_service.dtos.credit.ReportCreditByRangeDTO;
 import com.system.account_service.dtos.response.PageDataDTO;
 import com.system.account_service.entities.*;
 import com.system.account_service.entities.type.AccountStatus;
@@ -11,17 +13,24 @@ import com.system.account_service.entities.type.Currency;
 import com.system.account_service.exception.payload.ExistedDataException;
 import com.system.account_service.exception.payload.InvalidParamException;
 import com.system.account_service.exception.payload.ResourceNotFoundException;
+import com.system.account_service.repositories.CreditProfileRepository;
 import com.system.account_service.repositories.CreditRepository;
 import com.system.account_service.services.*;
 import com.system.account_service.utils.DateTimeUtils;
 import com.system.account_service.utils.MessageKeys;
+import com.system.common_library.dto.report.AccountReportRequest;
 import com.system.common_library.dto.request.account.CreateAccountCoreDTO;
+import com.system.common_library.dto.request.account.UpdateAccountCoreDTO;
 import com.system.common_library.dto.response.account.AccountCoreDTO;
 import com.system.common_library.dto.response.customer.CustomerCoreDTO;
+import com.system.common_library.dto.transaction.account.credit.CreateCreditDisbursementTransactionDTO;
+import com.system.common_library.dto.transaction.account.credit.TransactionCreditResultDTO;
 import com.system.common_library.dto.user.CustomerDetailDTO;
 import com.system.common_library.enums.AccountType;
+import com.system.common_library.service.CustomerDubboService;
 import com.system.common_library.service.TransactionDubboService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -34,6 +43,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CreditAccountServiceImpl implements CreditAccountService {
@@ -46,12 +56,21 @@ public class CreditAccountServiceImpl implements CreditAccountService {
     @DubboReference
     private final TransactionDubboService transactionDubboService;
 
+    @DubboReference
+    private final CustomerDubboService customerDubboService;
+
     // feign client
     private final CoreAccountClient coreAccountClient;
 
     private final CreditRepository repository;
+    private final CreditProfileRepository creditProfileRepository;
 
 
+    /*
+    * Todo: Create Credit Account
+    *  * Tao mac dinh voi Status = SUSPENDED
+    *   => Can Activation, tinh toan Credit-Limit
+    * */
     @Override
     @Transactional
     public CreditRp create(CustomerCoreDTO coreCustomer, CustomerDetailDTO customer, CreateCreditDTO data) {
@@ -114,6 +133,73 @@ public class CreditAccountServiceImpl implements CreditAccountService {
                 throw new ExistedDataException(((ExistedDataException) e).getMsgKey());
             }
             throw new InvalidParamException(MessageKeys.DATA_CREATE_FAILURE);
+        }
+    }
+
+    /*
+    * Todo: Active Credit Account
+    *  B1: Report Thu nhap ca nhan (income)
+    *  B2: Tinh toan Credit_limit dua tren income
+    *  B3: Update Credit_limit trong Core & update Status -> ACTIVE
+    * */
+    @Override
+    @Transactional
+    public CreditRp active(String creditId, String customerId, CreditProfileDTO profile) {
+        CreditAccount creditAccount = getDataId(creditId);
+        AccountCommons accountCommons = accountCommonService.findById(creditAccount.getAccountCommon().getAccountCommonId());
+        BigDecimal creditLimit = creditLimitGenerator(profile);
+
+        String errMsg = "";
+        try {
+            errMsg = "get Customer & update Credit profile ERR";
+            CustomerDetailDTO customer = customerDubboService.getCustomerByCustomerId(customerId);
+
+            CreditProfiles saveProfile = CreditProfiles.builder()
+                .customerId(customer.getCustomerId())
+                .company(profile.getCompany())
+                .phone(profile.getPhone())
+                .income(profile.getIncome())
+                .build();
+            creditProfileRepository.save(saveProfile);
+
+            // update status trong Core
+            errMsg = "Update status Credit Core ERR";
+            UpdateAccountCoreDTO updateCoreDTO = UpdateAccountCoreDTO.builder()
+                    .currency(Currency.VND.name())
+                    .isActive(true)
+                    .build();
+
+            coreAccountClient.update(
+                    creditAccount.getAccountCommon().getAccountNumber(),
+                    updateCoreDTO
+            );
+
+            // giai ngan cho tk credit
+            errMsg = "Disbursement to credit account ERR";
+            CreateCreditDisbursementTransactionDTO creditDisbursement =
+                    CreateCreditDisbursementTransactionDTO.builder()
+                            .cifCode(customer.getCifCode())
+                            .amount(creditLimit)
+                            .creditAccount(creditAccount.getAccountCommon().getAccountNumber())
+                            .build();
+            TransactionCreditResultDTO resultDTO =
+                    transactionDubboService.createCreditAccountDisbursement(creditDisbursement);
+
+            // update internal db
+            errMsg = "Update internal DB ERR";
+            accountCommons.setStatus(AccountStatus.ACTIVE);
+            creditAccount.setCreditLimit(creditLimit);
+            creditAccount.setAccountCommon(accountCommons);
+            repository.save(creditAccount);
+
+            errMsg = null;
+            return convertRp(creditAccount);
+        }
+        catch (Exception e) {
+            if(errMsg != null){
+                log.error(errMsg, e.getMessage());
+            }
+            throw new InvalidParamException(MessageKeys.CREDIT_ACTIVE_FAILURE);
         }
     }
 
@@ -191,6 +277,18 @@ public class CreditAccountServiceImpl implements CreditAccountService {
                 .orElseThrow(ResourceNotFoundException::new);
     }
 
+    @Override
+    public List<CreditAccount> getReportsByRange(AccountReportRequest request) {
+        ReportCreditByRangeDTO reportByRange = ReportCreditByRangeDTO.builder()
+                .branchId(request.getBankBranch())
+                .startAt(request.getStartAt())
+                .endAt(request.getEndAt())
+                .status(AccountStatus.valueOf(request.getStatus().name()))
+                .build();
+
+        return repository.getReportsByRange(reportByRange);
+    }
+
     //    Convert sang model response
     private CreditRp convertRp(CreditAccount data) {
         return CreditRp.builder()
@@ -205,5 +303,15 @@ public class CreditAccountServiceImpl implements CreditAccountService {
                 .lastPaymentDate(DateTimeUtils.format(DateTimeUtils.DD_MM_YYYY_HH_MM, data.getLastPaymentDate()))
                 .createAt(DateTimeUtils.format(DateTimeUtils.DD_MM_YYYY_HH_MM, data.getCreatedAt()))
                 .build();
+    }
+
+    // Function tao Credit_Limit dua vao income info
+    private BigDecimal creditLimitGenerator(CreditProfileDTO creditProfile) {
+        /*
+        * Xu ly tinh toan credit limit
+        * */
+
+        BigDecimal income = creditProfile.getIncome();
+        return income.multiply(BigDecimal.valueOf(10));
     }
 }

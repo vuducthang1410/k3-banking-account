@@ -1,0 +1,5 @@
+Thay đổi số dư tài khoản [[${accountNumber}]]
+Số tiền giao dịch: [[${transactionAmount}]]
+Số dư: [[${balance}]]
+Nội dung: [[${transactionContent}]]
+Thời gian: [[${transactionTime}]]

@@ -50,7 +50,7 @@ public class BranchController {
             @RequestParam(name = "pageSize", defaultValue = "10", required = false) Integer pageSize,
             WebRequest request
     ) {
-        PageDataDTO<BranchBanking> pageData = service.findAll(page, pageSize);
+        PageDataDTO<BranchBanking> pageData = service.findPagination(page, pageSize);
         HttpStatus status = HttpStatus.OK;
         String msg = localeUtils.getLocaleMsg(MessageKeys.DATA_GET_SUCCESS, request);
 

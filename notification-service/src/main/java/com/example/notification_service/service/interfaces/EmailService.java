@@ -35,4 +35,6 @@ public interface EmailService {
     boolean sendDisbursementFail(String fullName, String mail);
 
     boolean sendDisbursementSuccess(LoanDisbursementSuccessNoti loandisbursementsuccess, String fullName, String mail);
+
+    boolean sendLoanPaymentSuccess(LoanPaymentSuccessNoti loanPaymentSuccessNoti, String fullName, String mail);
 }

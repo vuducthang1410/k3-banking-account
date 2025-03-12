@@ -17,10 +17,7 @@ import com.system.common_library.dto.account.*;
 import com.system.common_library.dto.report.AccountReportRequest;
 import com.system.common_library.dto.report.AccountReportResponse;
 import com.system.common_library.dto.request.account.CreateAccountCoreDTO;
-import com.system.common_library.dto.response.account.AccountBalanceDTO;
-import com.system.common_library.dto.response.account.AccountCoreDTO;
-import com.system.common_library.dto.response.account.AccountInfoDTO;
-import com.system.common_library.dto.response.account.LoanAccountInfoDTO;
+import com.system.common_library.dto.response.account.*;
 import com.system.common_library.dto.response.customer.CustomerCoreDTO;
 import com.system.common_library.dto.user.CustomerDetailDTO;
 import com.system.common_library.enums.AccountType;
@@ -43,6 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 
 @Slf4j
@@ -56,12 +54,14 @@ public class AccountDubboServiceImpl implements AccountDubboService {
     private final CreditAccountService creditService;
     private final SavingAccountService savingService;
     private final LoanAccountService loanService;
+    private final BranchBankingService branchBankingService;
 
     // inject other dependencies
     private final CoreCustomerClient coreCustomerClient;
     private final CoreAccountClient coreAccountClient;
     private final MessageSource messageSource;
     private final Validator validator;
+    private final RollbackService rollbackService;
 
     // Dubbo / gRPC service
     @DubboReference
@@ -273,6 +273,21 @@ public class AccountDubboServiceImpl implements AccountDubboService {
         return result;
     }
 
+    @Override
+    public BranchInfoDTO getRandomBranch() {
+        List<BranchBanking> list = branchBankingService.findAll();
+        Random random = new Random();
+
+        BranchBanking randomBranch = list.get(random.nextInt(list.size()));
+
+        return BranchInfoDTO.builder()
+                .branchId(randomBranch.getBranchId())
+                .branchName(randomBranch.getBranchName())
+                .address(randomBranch.getAddress())
+                .description(randomBranch.getDescription())
+                .build();
+    }
+
     /* todo: Create a Banking account (Call by CustomerService)
      *   response type: AccountInfoDTO
      *   B1: Xac thuc Customer (Get Customer trong Core & kiem tra)
@@ -365,7 +380,15 @@ public class AccountDubboServiceImpl implements AccountDubboService {
         // ***
         // Save in AccountService Database
         // ***
-        return bankingService.create(createBankingData);
+        try {
+            return bankingService.create(createBankingData);
+        }
+        catch (Exception e) {
+            rollbackService.rollbackCreateCoreBankingAccount(coreAccount.getId());
+            throw new DubboException(
+                    messageSource.getMessage(MessageKeys.DATA_CREATE_FAILURE, null, LocaleContextHolder.getLocale())
+            );
+        }
     }
 
     @Override
@@ -607,7 +630,87 @@ public class AccountDubboServiceImpl implements AccountDubboService {
 
     @Override
     public List<AccountReportResponse> getReportAccounts(AccountReportRequest request) {
-        return List.of();
+        try {
+            AccountTypes type = AccountTypes.valueOf(request.getAccountType().name());
+
+            if(type.equals(AccountTypes.PAYMENT)) {
+                List<BankingAccount> listAcc = bankingService.getReportsByRange(request);
+
+                return listAcc.stream()
+                    .map(b ->
+                        AccountReportResponse.builder()
+                            .customerId(b.getAccountCommon().getCustomerId())
+                            .accountNumber(b.getAccountCommon().getAccountNumber())
+                            .accountType(AccountType.valueOf(b.getAccountCommon().getAccountType().name()))
+                            .status(ObjectStatus.valueOf(b.getAccountCommon().getStatus().name()))
+                            .bankBranch(b.getBranch().getBranchName())
+                            .balance(b.getBalance().doubleValue())
+                            .openedAt(b.getCreatedAt())
+                            .build())
+                .toList();
+            }
+
+            if(type.equals(AccountTypes.CREDIT)) {
+                List<CreditAccount> listAcc = creditService.getReportsByRange(request);
+
+                return listAcc.stream()
+                    .map(b ->
+                        AccountReportResponse.builder()
+                            .customerId(b.getAccountCommon().getCustomerId())
+                            .accountNumber(b.getAccountCommon().getAccountNumber())
+                            .accountType(AccountType.valueOf(b.getAccountCommon().getAccountType().name()))
+                            .status(ObjectStatus.valueOf(b.getAccountCommon().getStatus().name()))
+                            .bankBranch(b.getBranch().getBranchName())
+                            .openedAt(b.getCreatedAt())
+                            .creditLimit(b.getCreditLimit().stripTrailingZeros().toPlainString())
+                            .debtBalance(b.getDebtBalance().stripTrailingZeros().toPlainString())
+                            .rate(b.getInterestRate().getRate().doubleValue())
+                            .billingCycle(b.getBillingCycle())
+                            .build())
+                    .toList();
+            }
+
+            if(type.equals(AccountTypes.SAVINGS)) {
+                List<SavingAccount> listAcc = savingService.getReportsByRange(request);
+
+                return listAcc.stream()
+                    .map(b ->
+                        AccountReportResponse.builder()
+                            .customerId(b.getAccountCommon().getCustomerId())
+                            .accountNumber(b.getAccountCommon().getAccountNumber())
+                            .accountType(AccountType.valueOf(b.getAccountCommon().getAccountType().name()))
+                            .status(ObjectStatus.valueOf(b.getAccountCommon().getStatus().name()))
+                            .bankBranch(b.getBranch().getBranchName())
+                            .balance(b.getBalance().doubleValue())
+                            .openedAt(b.getCreatedAt())
+                            .rate(b.getInterestRate().getRate().doubleValue())
+                            .build())
+                    .toList();
+            }
+
+            if(type.equals(AccountTypes.LOAN)) {
+                List<LoanAccount> listAcc = loanService.getReportsByRange(request);
+
+                return listAcc.stream()
+                    .map(b ->
+                        AccountReportResponse.builder()
+                            .customerId(b.getAccountCommon().getCustomerId())
+                            .accountNumber(b.getAccountCommon().getAccountNumber())
+                            .accountType(AccountType.valueOf(b.getAccountCommon().getAccountType().name()))
+                            .status(ObjectStatus.valueOf(b.getAccountCommon().getStatus().name()))
+                            .bankBranch(b.getBranch().getBranchName())
+                            .balance(b.getBalance().doubleValue())
+                            .openedAt(b.getCreatedAt())
+                            .build())
+                    .toList();
+            }
+
+            return List.of();
+        }
+        catch (Exception e) {
+            log.error(e.getMessage());
+            throw new DubboException(e.getMessage());
+        }
     }
 
     @Override

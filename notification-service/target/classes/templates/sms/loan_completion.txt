@@ -1,0 +1,5 @@
+Koan vay cua quy khach tai KienlongBank da thanh toan thanh cong. Khong con nghia vu tai chinh nao.
+So hop dong: [[${contractNumber}]]
+So tien thanh toan: [[${amountPaid}]]
+Ngay tat toan: [[${settlementDate}]]
+Cam on quy khach da dong hanh cung KienlongBank. Neu can ho tro, vui long lien he.

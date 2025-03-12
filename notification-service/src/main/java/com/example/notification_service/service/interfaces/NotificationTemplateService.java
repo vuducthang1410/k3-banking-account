@@ -27,5 +27,5 @@ public interface NotificationTemplateService {
     List<String> findDistinctTemplate();
     List<NotificationTemplateResponseDTO> retrieveAllTemplatesDTOWithoutPagination();
     Page<NotificationTemplateResponseDTO> retrieveTemplate(Pageable pageable,  String event, String title, String content, String channel);
-
+    Page<NotificationTemplateResponseDTO> searchTemplatesSpecification(String title, String content, String channel, String event, Pageable pageable) ;
 }
