@@ -33,4 +33,5 @@ public class DisbursementInfoHistory extends BaseEntity {
     private String loanAccountId;
     private Timestamp loanDate;
     private Timestamp douDate;
+    private String transactionId;
 }

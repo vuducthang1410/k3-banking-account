@@ -21,7 +21,7 @@ public class PaymentSchedule extends BaseEntity{
     private Timestamp paymentInterestDate;
     private Timestamp paymentScheduleDate;
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "customer_loan_info_id",nullable = false)
+    @JoinColumn(name = "loan_info_id",nullable = false)
     private LoanDetailInfo loanDetailInfo;
     private String name;
     private Timestamp dueDate;

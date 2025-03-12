@@ -26,4 +26,6 @@ public interface IFinancialInfoService{
     List<FinancialInfo> getListFinancialInfoByCifCode(String cifCode, String transactionId);
 
     DataResponseWrapper<Object> getFinancialInfoByCifCode(String cifCode, String transactionId);
+
+    DataResponseWrapper<Object> getDetailInfoActiveByCifCode(String cifCode, String transactionId);
 }

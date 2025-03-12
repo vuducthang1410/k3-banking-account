@@ -21,6 +21,6 @@ public interface CustomerDubboService {
     @NonNull
     CustomerDetailDTO getCustomerByCustomerId(String customerId) throws DubboException;
 
-//    List<CustomerDetailDTO> getReportCustomersByList(List<String> customerId) throws DubboException;;
+    List<CustomerDetailDTO> getReportCustomersByList(List<String> customerId) throws DubboException;;
 
 }

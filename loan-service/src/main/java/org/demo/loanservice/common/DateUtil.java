@@ -31,6 +31,15 @@ public class DateUtil {
             return "";
         }
     }
+    public static String format(String format, LocalDate date){
+        try{
+            SimpleDateFormat sdf=new SimpleDateFormat(format);
+            return sdf.format(date);
+        }catch (Exception ex){
+            log.error(ex.getMessage());
+            return "";
+        }
+    }
     public static String format(String format, LocalDateTime date){
         try{
             SimpleDateFormat sdf=new SimpleDateFormat(format);

@@ -20,14 +20,17 @@ import org.demo.loanservice.dto.enumDto.ApplicableObjects;
 import org.demo.loanservice.dto.enumDto.DocumentType;
 import org.demo.loanservice.dto.enumDto.RequestStatus;
 import org.demo.loanservice.dto.enumDto.Unit;
+import org.demo.loanservice.dto.projection.LoanAmountInfoProjection;
 import org.demo.loanservice.dto.request.ApproveFinancialInfoRq;
 import org.demo.loanservice.dto.request.FinancialInfoRq;
+import org.demo.loanservice.dto.response.FinancialDetailRp;
 import org.demo.loanservice.dto.response.FinancialInfoRp;
 import org.demo.loanservice.dto.response.LegalDocumentRp;
 import org.demo.loanservice.entities.FinancialInfo;
 import org.demo.loanservice.entities.LegalDocuments;
 import org.demo.loanservice.repositories.FinancialInfoRepository;
 import org.demo.loanservice.repositories.LegalDocumentsRepository;
+import org.demo.loanservice.repositories.LoanDetailInfoRepository;
 import org.demo.loanservice.services.IFinancialInfoService;
 import org.demo.loanservice.services.INotificationService;
 import org.demo.loanservice.wiremockService.CICService;
@@ -42,6 +45,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.sql.Date;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -52,6 +56,7 @@ import java.util.stream.Collectors;
 public class FinancialInfoServiceImpl implements IFinancialInfoService {
     private final FinancialInfoRepository financialInfoRepository;
     private final LegalDocumentsRepository legalDocumentsRepository;
+    private final LoanDetailInfoRepository loanDetailInfoRepository;
     @DubboReference
     private CustomerDubboService customerDubboService;
     @DubboReference
@@ -311,6 +316,19 @@ public class FinancialInfoServiceImpl implements IFinancialInfoService {
                 .build();
     }
 
+    @Override
+    public DataResponseWrapper<Object> getDetailInfoActiveByCifCode(String cifCode, String transactionId) {
+        Date currentDate= Date.valueOf(LocalDate.now());
+        FinancialInfo financialInfo=financialInfoRepository.findByCifCodeAndRequestStatusAndExpiredDateBefore(cifCode,RequestStatus.APPROVED,currentDate);
+        CustomerDetailDTO customerDetailDTO=customerDubboService.getCustomerByCifCode(cifCode);
+        AccountInfoDTO accountInfoDTO=accountDubboService.getBankingAccount(cifCode);
+        return DataResponseWrapper.builder()
+                .data(convertToFinancialDetailRp(financialInfo,accountInfoDTO,customerDetailDTO))
+                .status(MessageValue.STATUS_CODE_SUCCESSFULLY)
+                .message("")
+                .build();
+    }
+
     private LegalDocumentRp convertToLegalDocumentRp(LegalDocuments legalDocuments) {
         LegalDocumentRp legalDocumentRp = new LegalDocumentRp();
         legalDocumentRp.setLegalDocumentId(legalDocuments.getId());
@@ -334,5 +352,27 @@ public class FinancialInfoServiceImpl implements IFinancialInfoService {
         BigDecimal amountLoanRemainLimit = financialInfo.getLoanAmountMax().subtract(financialInfoRepository.getLoanAmountRemainingLimit(customerDetailDTO.getCifCode()));
         financialInfoRp.setAmountLoanLimit(Util.formatToVND(amountLoanRemainLimit));
         return financialInfoRp;
+    }
+    private FinancialDetailRp convertToFinancialDetailRp(FinancialInfo financialInfo,AccountInfoDTO bankingAccount,CustomerDetailDTO customerDetailDTO) {
+        FinancialDetailRp financialDetailRp = new FinancialDetailRp();
+        financialDetailRp.setCustomerId(customerDetailDTO.getCustomerId());
+        financialDetailRp.setCustomerName(customerDetailDTO.getFullName());
+        financialDetailRp.setNumberPhone(customerDetailDTO.getPhone());
+        financialDetailRp.setIdentificationNumber(customerDetailDTO.getIdentityCard());
+        financialDetailRp.setDateOfBirth(DateUtil.format(DateUtil.DD_MM_YYYY_SLASH,customerDetailDTO.getDob()));
+        if(financialInfo!=null){
+            financialDetailRp.setFinancialInfoId(financialInfo.getId());
+            financialDetailRp.setRequestStatus(financialInfo.getRequestStatus().toString());
+
+            if(financialInfo.getRequestStatus().equals(RequestStatus.APPROVED)){
+                LoanAmountInfoProjection loanAmountInfoProjection =loanDetailInfoRepository.getMaxLoanLimitAndCurrentLoanAmount(customerDetailDTO.getCustomerId()).get();
+                financialDetailRp.setAmountLoanLimit(Util.formatToVND(financialInfo.getLoanAmountMax()));
+                BigDecimal amountMaybeLoanRemain=loanAmountInfoProjection.getLoanAmountMax().subtract(loanAmountInfoProjection.getTotalLoanedAmount());
+                financialDetailRp.setAmountMaybeLoanRemain(Util.formatToVND(amountMaybeLoanRemain));
+            }
+        }
+        financialDetailRp.setBalanceBankingAccount(Util.formatToVND(bankingAccount.getCurrentAccountBalance()));
+        financialDetailRp.setBankingAccountNumber(bankingAccount.getAccountNumber());
+        return financialDetailRp;
     }
 }

@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 import java.math.BigDecimal;
+import java.sql.Date;
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Optional;
 
@@ -38,4 +40,6 @@ public interface FinancialInfoRepository extends JpaRepository<FinancialInfo, St
 
     @Query(value = queryGetLoanAmountRemainingLimit, nativeQuery = true)
     BigDecimal getLoanAmountRemainingLimit(String cifCode);
+
+   FinancialInfo findByCifCodeAndRequestStatusAndExpiredDateBefore(String cifCode, RequestStatus requestStatus, Date currentDate);
 }

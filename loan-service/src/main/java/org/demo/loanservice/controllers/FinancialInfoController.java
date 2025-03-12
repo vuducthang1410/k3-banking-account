@@ -97,12 +97,22 @@ public class FinancialInfoController {
             @PathVariable(name = "id")
             @Parameter(description = "Unique ID of the financial record")
             String id,
-
             @RequestHeader(name = "transactionId")
             @Parameter(description = "Unique transaction ID")
             String transactionId
     ) {
         return ResponseEntity.ok(financialInfoService.getDetailInfoById(id, transactionId));
+    }
+    @GetMapping("/individual-customer/get-detail-info-active/{cifCode}")
+    public ResponseEntity<DataResponseWrapper<Object>> getDetailInfoByCifCode(
+            @PathVariable(name = "cifCode")
+            @Parameter(description = "Unique ID of the financial record")
+            String cifCode,
+            @RequestHeader(name = "transactionId")
+            @Parameter(description = "Unique transaction ID")
+            String transactionId
+    ) {
+        return ResponseEntity.ok(financialInfoService.getDetailInfoActiveByCifCode(cifCode, transactionId));
     }
 
     @Operation(

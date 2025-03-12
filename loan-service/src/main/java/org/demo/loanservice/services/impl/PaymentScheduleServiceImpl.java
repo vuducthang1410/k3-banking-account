@@ -15,6 +15,7 @@ import org.demo.loanservice.controllers.exception.DataNotFoundException;
 import org.demo.loanservice.controllers.exception.DataNotValidException;
 import org.demo.loanservice.controllers.exception.ServerErrorException;
 import org.demo.loanservice.dto.MapEntityToDto;
+import org.demo.loanservice.dto.TransactionInfo;
 import org.demo.loanservice.dto.TransactionInfoDto;
 import org.demo.loanservice.dto.enumDto.DeftRepaymentStatus;
 import org.demo.loanservice.dto.enumDto.FormDeftRepaymentEnum;
@@ -125,6 +126,7 @@ public class PaymentScheduleServiceImpl implements IPaymentScheduleService {
         }
         // Initialize repayment history tracking
         List<RepaymentHistory> repaymentHistoryList = new LinkedList<>();
+        List<TransactionInfo> transactionInfoDtoList = new LinkedList<>();
         try {
             // Fetch customer banking and loan account details
             log.info("Transaction {}: Fetching banking account and loan account details.", transactionId);
@@ -152,7 +154,7 @@ public class PaymentScheduleServiceImpl implements IPaymentScheduleService {
 
             // Process the payment based on the specified payment type (INTEREST, PRINCIPAL, PENALTY)
             log.info("Transaction {}: Initiating payment processing for schedule ID {}.", transactionId, deftRepaymentRq.getPaymentScheduleId());
-            processPayment(deftRepaymentRq.getPaymentType(), paymentSchedule, accountBankingDTO, accountLoanInfoDTO, transactionInfoDto, repaymentHistoryList, transactionId);
+            processPayment(deftRepaymentRq.getPaymentType(), paymentSchedule, accountBankingDTO, accountLoanInfoDTO, transactionInfoDto, repaymentHistoryList, transactionId, transactionInfoDtoList);
 
             // Verify if the payment was processed successfully
             if (transactionInfoDto.getTotalPayment().compareTo(BigDecimal.ZERO) == 0) {
@@ -171,8 +173,12 @@ public class PaymentScheduleServiceImpl implements IPaymentScheduleService {
                     .build();
         } catch (Exception e) {
             log.error(MessageData.MESSAGE_LOG_DETAIL, transactionId, MessageData.REPAYMENT_LOAN_ERROR.getMessageLog(), e.getMessage(), e);
+            //rollback transaction
+            transactionInfoDtoList.forEach(transactionInfo ->
+                    transactionDubboService.rollbackLoanPaymentTransaction(transactionInfo.getTransactionId())
+            );
+
             throw new DataNotValidException(MessageData.REPAYMENT_LOAN_ERROR);
-            //todo: rollback transaction
         }
     }
 
@@ -247,12 +253,17 @@ public class PaymentScheduleServiceImpl implements IPaymentScheduleService {
      * Process the payment based on the type (INTEREST, PRINCIPAL, PENALTY, ALL).
      */
     private void processPayment(String paymentType, PaymentSchedule paymentSchedule, AccountInfoDTO accountBankingDTO,
-                                AccountInfoDTO accountLoanInfoDTO, TransactionInfoDto transactionInfoDto, List<RepaymentHistory> repaymentHistoryList, String transactionId) {
+                                AccountInfoDTO accountLoanInfoDTO, TransactionInfoDto transactionInfoDto, List<RepaymentHistory> repaymentHistoryList,
+                                String transactionId, List<TransactionInfo> transactionInfoList) {
+
         // Process interest payment
-        if (shouldProcess(paymentType, PaymentType.INTEREST)&&!paymentSchedule.getIsPaidInterest()) {
+        if (shouldProcess(paymentType, PaymentType.INTEREST) && !paymentSchedule.getIsPaidInterest()) {
             try {
                 TransactionLoanResultDTO transactionLoanResultDTO = executeProcessPaymentService.paymentInterest(paymentSchedule, accountBankingDTO, accountLoanInfoDTO, transactionInfoDto, repaymentHistoryList);
-                checkLoanAccountBalanceToCloseLoan(paymentSchedule,accountLoanInfoDTO, transactionLoanResultDTO, transactionId);
+                if (transactionLoanResultDTO != null) {
+                    transactionInfoList.add(TransactionInfo.builder().transactionId(transactionLoanResultDTO.getTransactionId()).paymentType(PaymentType.PRINCIPAL).build());
+                    checkLoanAccountBalanceToCloseLoan(paymentSchedule, accountLoanInfoDTO, transactionLoanResultDTO, transactionId);
+                }
             } catch (Exception e) {
                 log.error("Error processing interest payment: {}", e.getMessage(), e);
                 return;
@@ -260,10 +271,13 @@ public class PaymentScheduleServiceImpl implements IPaymentScheduleService {
         }
 
         // Process principal payment
-        if (shouldProcess(paymentType, PaymentType.PRINCIPAL)&&!paymentSchedule.getIsPaid()) {
+        if (shouldProcess(paymentType, PaymentType.PRINCIPAL) && !paymentSchedule.getIsPaid()) {
             try {
                 TransactionLoanResultDTO transactionLoanResultDTO = executeProcessPaymentService.paymentLoan(paymentSchedule, accountBankingDTO, accountLoanInfoDTO, transactionInfoDto, repaymentHistoryList);
-                checkLoanAccountBalanceToCloseLoan(paymentSchedule,accountLoanInfoDTO, transactionLoanResultDTO, transactionId);
+                if (transactionLoanResultDTO != null) {
+                    transactionInfoList.add(TransactionInfo.builder().transactionId(transactionLoanResultDTO.getTransactionId()).paymentType(PaymentType.PRINCIPAL).build());
+                    checkLoanAccountBalanceToCloseLoan(paymentSchedule, accountLoanInfoDTO, transactionLoanResultDTO, transactionId);
+                }
             } catch (Exception e) {
                 log.error("Error processing principal payment: {}", e.getMessage(), e);
                 return;
@@ -274,19 +288,22 @@ public class PaymentScheduleServiceImpl implements IPaymentScheduleService {
         if (shouldProcess(paymentType, PaymentType.PENALTY) && isPaymentOverdue(paymentSchedule)) {
             try {
                 TransactionLoanResultDTO transactionLoanResultDTO = executeProcessPaymentService.paymentPenalty(paymentSchedule, accountBankingDTO, accountLoanInfoDTO, transactionInfoDto, repaymentHistoryList);
-                checkLoanAccountBalanceToCloseLoan(paymentSchedule,accountLoanInfoDTO, transactionLoanResultDTO, transactionId);
+                if (transactionLoanResultDTO != null) {
+                    transactionInfoList.add(TransactionInfo.builder().transactionId(transactionLoanResultDTO.getTransactionId()).paymentType(PaymentType.PRINCIPAL).build());
+                    checkLoanAccountBalanceToCloseLoan(paymentSchedule, accountLoanInfoDTO, transactionLoanResultDTO, transactionId);
+                }
             } catch (Exception e) {
                 log.error("Error processing penalty payment: {}", e.getMessage(), e);
             }
         }
     }
 
-    private void checkLoanAccountBalanceToCloseLoan(PaymentSchedule paymentSchedule,AccountInfoDTO loaAccountInfoDto, TransactionLoanResultDTO resultExecuteTransaction, String transactionId) {
+    private void checkLoanAccountBalanceToCloseLoan(PaymentSchedule paymentSchedule, AccountInfoDTO loaAccountInfoDto, TransactionLoanResultDTO resultExecuteTransaction, String transactionId) {
         if (resultExecuteTransaction.getBalanceLoanAccount().compareTo(BigDecimal.ZERO) == 0) {
             String loanDetailInfo = paymentSchedule.getLoanDetailInfo().getId();
             loanDetailRepaymentScheduleService.updateLoanStatus(loanDetailInfo, transactionId);
-            AccountInfoDTO accountInfoDTO=accountDubboService.updateAccountStatus(loaAccountInfoDto.getAccountNumber(),ObjectStatus.CLOSED);
-            if(accountInfoDTO.getStatusAccount().compareTo(ObjectStatus.CLOSED)!=0){
+            AccountInfoDTO accountInfoDTO = accountDubboService.updateAccountStatus(loaAccountInfoDto.getAccountNumber(), ObjectStatus.CLOSED);
+            if (accountInfoDTO.getStatusAccount().compareTo(ObjectStatus.CLOSED) != 0) {
                 throw new ServerErrorException();
             }
         }
@@ -306,6 +323,7 @@ public class PaymentScheduleServiceImpl implements IPaymentScheduleService {
     private boolean shouldProcess(String requestType, PaymentType type) {
         return requestType.equalsIgnoreCase(type.name()) || requestType.equalsIgnoreCase(PaymentType.ALL.name());
     }
+
     private PaymentSchedule createPaymentSchedule(LoanDetailInfo loanDetailInfo,
                                                   BigDecimal amountRepaymentEveryTerm,
                                                   BigDecimal amountInterestRate,
@@ -322,6 +340,7 @@ public class PaymentScheduleServiceImpl implements IPaymentScheduleService {
         paymentSchedule.setName(String.valueOf((index + 1)));
         return paymentSchedule;
     }
+
     private PaymentScheduleDetailRp mapToPaymentScheduleDetailRp(PaymentSchedule paymentSchedule) {
         PaymentScheduleDetailRp paymentScheduleDetailRp = new PaymentScheduleDetailRp();
 

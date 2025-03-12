@@ -28,5 +28,4 @@ public class FinancialInfoRp implements Serializable {
     private String expiredDate;
     private String note;
     private String amountLoanLimit;
-
 }

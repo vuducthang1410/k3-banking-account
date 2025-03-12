@@ -5,6 +5,7 @@ import com.system.common_library.dto.report.AccountReportRequest;
 import com.system.common_library.dto.report.AccountReportResponse;
 import com.system.common_library.dto.response.account.AccountBalanceDTO;
 import com.system.common_library.dto.response.account.AccountInfoDTO;
+import com.system.common_library.dto.response.account.BranchInfoDTO;
 import com.system.common_library.dto.response.account.LoanAccountInfoDTO;
 import com.system.common_library.enums.AccountType;
 import com.system.common_library.enums.ObjectStatus;
@@ -40,4 +41,6 @@ public interface AccountDubboService {
     AccountReportResponse getReportAccount(String account,AccountType type) throws DubboException;
     List<AccountReportResponse> getReportAccounts(AccountReportRequest request) throws DubboException;
     List<AccountReportResponse> getReportAccountsByList(List<String> accounts) throws DubboException;
+
+    BranchInfoDTO getRandomBranch();
 }
