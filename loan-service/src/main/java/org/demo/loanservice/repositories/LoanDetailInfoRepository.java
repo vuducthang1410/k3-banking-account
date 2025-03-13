@@ -20,16 +20,15 @@ import java.util.Optional;
 public interface LoanDetailInfoRepository extends JpaRepository<LoanDetailInfo, String> {
     String queryFetchMaxLoanLimitAndCurrentLoanAmount = """
             SELECT COALESCE(sum(CAST(tldi.loan_amount AS DECIMAL)), 0) AS totalLoanedAmount,
-                   tfi.loan_amount_max                                 AS loanAmountMax
+                   COALESCE(tfi.loan_amount_max, 0)                    AS loanAmountMax
             FROM tbl_financial_info tfi
                      LEFT JOIN tbl_loan_detail_info tldi
-                               ON tfi.id = tldi.financial_info_id
-            WHERE tfi.customer_id = :customerId
-              AND tfi.request_status = 'APPROVED'
-              AND tfi.is_deleted = FALSE
-              AND (tldi.loan_status = 'ACTIVE' or tldi.loan_status='PENDING')
-              AND tldi.is_deleted = FALSE
-            GROUP BY tfi.id, tfi.loan_amount_max;
+                               ON tfi.id = tldi.financial_info_id AND
+                                  (tldi.loan_status = 'ACTIVE' or tldi.loan_status = 'PENDING') AND tldi.is_deleted = FALSE
+                        WHERE tfi.customer_id = :customerId
+                          AND tfi.request_status = 'APPROVED'
+                          AND tfi.is_deleted = FALSE
+                        GROUP BY tfi.id, tfi.loan_amount_max;
             """;
     String queryGetAllLoanInfoByFinancialInfoList = """
             select ldf.id,
@@ -72,7 +71,7 @@ public interface LoanDetailInfoRepository extends JpaRepository<LoanDetailInfo, 
                            (select sum(tps2.amount_repayment)
                             from tbl_payment_schedule tps2
                             where tps2.is_paid = true
-                              and tps2.customer_loan_info_id = ldf.id), 0) as amountDeftPaid
+                              and tps2.loan_info_id = ldf.id), 0) as amountDeftPaid
             FROM tbl_loan_detail_info ldf
                      JOIN tbl_financial_info tfi
                           ON ldf.financial_info_id = tfi.id
@@ -82,7 +81,7 @@ public interface LoanDetailInfoRepository extends JpaRepository<LoanDetailInfo, 
                           ON tlp.id = ldf.loan_product_id
                      JOIN (SELECT *
                            FROM (SELECT tps.*,
-                                        ROW_NUMBER() OVER (PARTITION BY tps.customer_loan_info_id
+                                        ROW_NUMBER() OVER (PARTITION BY tps.loan_info_id
                                             ORDER BY tps.created_date, tps.due_date) AS rn
                                  FROM tbl_payment_schedule tps
                                  WHERE tps.is_paid_interest = false
@@ -90,7 +89,7 @@ public interface LoanDetailInfoRepository extends JpaRepository<LoanDetailInfo, 
                                    AND tps.is_deleted = false
                                    and tps.status != 'OVERDUE') tps_filtered
                            WHERE rn = 1) tps
-                          ON tps.customer_loan_info_id = ldf.id
+                          ON tps.loan_info_id = ldf.id
             WHERE ldf.is_deleted = false
               AND ldf.request_status = 'APPROVED'
               AND ldf.loan_status = 'ACTIVE'
@@ -108,7 +107,7 @@ public interface LoanDetailInfoRepository extends JpaRepository<LoanDetailInfo, 
                           ON tlp.id = ldf.loan_product_id
                      JOIN (SELECT *
                            FROM (SELECT tps.*,
-                                        ROW_NUMBER() OVER (PARTITION BY tps.customer_loan_info_id
+                                        ROW_NUMBER() OVER (PARTITION BY tps.loan_info_id
                                             ORDER BY tps.created_date, tps.due_date) AS rn
                                  FROM tbl_payment_schedule tps
                                  WHERE tps.is_paid_interest = false
@@ -116,14 +115,14 @@ public interface LoanDetailInfoRepository extends JpaRepository<LoanDetailInfo, 
                                    AND tps.is_deleted = false
                                    and tps.status != 'OVERDUE') tps_filtered
                            WHERE rn = 1) tps
-                          ON tps.customer_loan_info_id = ldf.id
+                          ON tps.loan_info_id = ldf.id
             WHERE ldf.is_deleted = false
             and tfi.cif_code= :cifCode
             """;
     String queryGetAmountRemainingByLoanDetailInfoId = """
             select COALESCE(sum(amount_repayment), 0)
             from tbl_loan_detail_info ldi
-                     join tbl_payment_schedule tps on ldi.id = tps.customer_loan_info_id
+                     join tbl_payment_schedule tps on ldi.id = tps.loan_info_id
             where ldi.id = :loanDetailInfoId
               and is_paid = false
             """;

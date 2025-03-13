@@ -28,7 +28,7 @@ public interface PaymentScheduleRepository extends JpaRepository<PaymentSchedule
                         FROM tbl_payment_schedule rps
                                  LEFT JOIN tbl_loan_penalties lp ON rps.id = lp.payment_schedule_id and lp.is_deleted =false
                         WHERE rps.is_deleted = false
-                          AND rps.customer_loan_info_id= :loanDetailInfoId
+                          AND rps.loan_info_id= :loanDetailInfoId
                         GROUP BY rps.id, rps.amount_interest_rate, rps.amount_repayment, rps.due_date,
                                  rps.is_paid, rps.is_paid_interest, rps.payment_interest_date,
                                  rps.payment_schedule_date, rps.status, rps.name

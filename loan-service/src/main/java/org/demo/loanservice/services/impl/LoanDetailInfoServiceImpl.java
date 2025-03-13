@@ -2,6 +2,7 @@ package org.demo.loanservice.services.impl;
 
 import com.system.common_library.dto.account.CreateDubboLoanDTO;
 import com.system.common_library.dto.notifcation.rabbitMQ.LoanAccountNoti;
+import com.system.common_library.dto.notifcation.rabbitMQ.LoanCompletionNoti;
 import com.system.common_library.dto.notifcation.rabbitMQ.LoanDisbursementSuccessNoti;
 import com.system.common_library.dto.response.account.AccountInfoDTO;
 import com.system.common_library.dto.response.account.LoanAccountInfoDTO;
@@ -130,7 +131,7 @@ public class LoanDetailInfoServiceImpl implements ILoanDetailInfoService {
         }
 
         // Retrieve the applicable interest rate based on the loan amount
-        InterestRate interestRate = interestRateService.getInterestRateByLoanAmount(individualCustomerInfoRq.getLoanAmount(), transactionId);
+        InterestRate interestRate = interestRateService.getInterestRateByLoanAmount(individualCustomerInfoRq.getLoanAmount(),individualCustomerInfoRq.getLoanTerm(), transactionId);
         log.debug("transactionId:{} - Loan amount : {} - loan term {} ",
                 transactionId,
                 individualCustomerInfoRq.getLoanAmount(),
@@ -176,7 +177,6 @@ public class LoanDetailInfoServiceImpl implements ILoanDetailInfoService {
     @Override
     @Transactional
     public DataResponseWrapper<Object> approveIndividualCustomerDisbursement(LoanInfoApprovalRq loanInfoApprovalRq, String transactionId) {
-
         LoanDetailInfo loanDetailInfo = loanDetailRepaymentScheduleService.getLoanDetailInfoById(loanInfoApprovalRq.getLoanDetailInfoId(), transactionId);
         if (!loanDetailInfo.getRequestStatus().equals(RequestStatus.PENDING)) {
             String messageLog = String.format(MessageData.REQUEST_STATUS_LOAN_NOT_PENDING.getMessageLog(), loanDetailInfo.getId(), loanDetailInfo.getRequestStatus().name());
@@ -205,7 +205,7 @@ public class LoanDetailInfoServiceImpl implements ILoanDetailInfoService {
             CreateDubboLoanDTO createLoanDTO = new CreateDubboLoanDTO();
             createLoanDTO.setCustomerId(loanDetailInfo.getFinancialInfo().getCustomerId());
             createLoanDTO.setCifCode(loanDetailInfo.getFinancialInfo().getCifCode());
-            createLoanDTO.setBranchId("54a47e95-ff4f-480f-98ed-63cc9bc98ca8");
+            createLoanDTO.setBranchId(accountDubboService.getRandomBranch().getBranchId());
             LoanAccountInfoDTO loanAccountInfoDTO = accountDubboService.createLoanAccount(createLoanDTO);
             // Check for null separately
             if (loanAccountInfoDTO == null) {
@@ -265,7 +265,8 @@ public class LoanDetailInfoServiceImpl implements ILoanDetailInfoService {
         } catch (Exception e) {
             log.info(MessageData.MESSAGE_LOG, transactionId, e.getMessage());
             //callback transaction
-            transactionDubboService.rollbackLoanAccountDisbursement(transactionInfo.getTransactionId());
+            if (transactionInfo.getTransactionId() != null && StringUtils.hasText(transactionInfo.getTransactionId()))
+                transactionDubboService.rollbackLoanAccountDisbursement(transactionInfo.getTransactionId());
             throw new ServerErrorException(transactionId, MessageData.APPROVE_INDIVIDUAL_CUSTOMER_DISBURSEMENT_ERROR.getCode());
 
         }
@@ -535,6 +536,12 @@ public class LoanDetailInfoServiceImpl implements ILoanDetailInfoService {
                 throw new ServerErrorException();
             }
             loanDetailInfoRepository.saveAndFlush(loanDetailInfo);
+            LoanCompletionNoti loanCompletionNoti= new LoanCompletionNoti();
+            loanCompletionNoti.setAmountPaid(amountNeedPayment);
+            loanCompletionNoti.setCustomerCIF(financialInfo.getCifCode());
+            loanCompletionNoti.setSettlementDate(LocalDate.now());
+            loanCompletionNoti.setContractNumber(loanDetailInfo.getId());
+            notificationService.sendNotificationLoanComplete(loanCompletionNoti);
             return DataResponseWrapper.builder()
                     .build();
         } catch (Exception e) {

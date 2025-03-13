@@ -35,7 +35,9 @@ public enum MessageData {
     REPAYMENT_LOAN_ERROR("repayment_loan.error", "Unexpected error during repayment process.", "30312"),
     REQUEST_STATUS_LOAN_NOT_PENDING("request_status.loan.not_pending", "Request status of loan detail info is not pending: loan detail info id -{} :: request status - {}", "30313"),
     RESOURCE_MAPPING_MESSAGE_ERROR("resource.mapping.message.error", "Mapping message in resource error", "30314"),
-    APPROVE_INDIVIDUAL_CUSTOMER_DISBURSEMENT_ERROR("APPROVE.INDIVIDUAL_CUSTOMER.DISBURSEMENT.ERROR","execute error when approve loan","30315"),
+    APPROVE_INDIVIDUAL_CUSTOMER_DISBURSEMENT_ERROR("approve.individual_customer.disbursement.error","execute error when approve loan","30315"),
+    INTEREST_RATE_TERM_MIN_GREATER_TERM_LIMIT_LOAN_PRODUCT("interest_rate.term_min_greater_term_limit.loan_product", "Minimum term interest rate is greater than term limit in loan product", "30316"),
+    INTEREST_RATE_AMOUNT_MIN_GREATER_AMOUNT_LIMIT_LOAN_PRODUCT("interest_rate.amount_min_greater_amount_limit.loan_product", "Minimum amount interest rate is greater than amount limit in loan product", "30317"),
 
     DATA_NOT_FOUND("data.notFound", "Data not found", "40400"),
     INTEREST_RATE_NOT_FOUND("interest_rate.not_found", "Interest rate not found", "40401"),

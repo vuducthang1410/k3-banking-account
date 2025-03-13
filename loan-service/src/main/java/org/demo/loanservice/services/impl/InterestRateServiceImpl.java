@@ -3,6 +3,7 @@ package org.demo.loanservice.services.impl;
 import lombok.RequiredArgsConstructor;
 import org.demo.loanservice.common.*;
 import org.demo.loanservice.controllers.exception.DataNotFoundException;
+import org.demo.loanservice.controllers.exception.DataNotValidException;
 import org.demo.loanservice.dto.MapEntityToDto;
 import org.demo.loanservice.dto.enumDto.Unit;
 import org.demo.loanservice.dto.request.InterestRateRq;
@@ -39,28 +40,49 @@ public class InterestRateServiceImpl implements IInterestRateService {
 
     @Override
     public DataResponseWrapper<Object> save(InterestRateRq interestRateRq, String transactionId) {
+        // Find the loan product by ID and check if it is not deleted
         Optional<LoanProduct> loanProductOptional = loanProductRepository.findByIdAndIsDeleted(interestRateRq.getLoanProductId(), Boolean.FALSE);
         if (loanProductOptional.isEmpty()) {
             log.info(MessageData.MESSAGE_LOG_NOT_FOUND_DATA, transactionId, MessageData.LOAN_PRODUCT_NOT_FOUNT.getMessageLog(), interestRateRq.getLoanProductId());
             throw new DataNotFoundException(MessageData.LOAN_PRODUCT_NOT_FOUNT);
         }
+
         LoanProduct loanProduct = loanProductOptional.get();
+
+        // Validate that the minimum loan term is not greater than the loan product's term limit
+        if (loanProduct.getTermLimit().compareTo(interestRateRq.getMinimumLoanTerm()) < 0) {
+            log.warn("Transaction ID: {}, Validation failed - Minimum loan term {} is greater than term limit {}",
+                    transactionId, interestRateRq.getMinimumLoanTerm(), loanProduct.getTermLimit());
+            throw new DataNotValidException(MessageData.INTEREST_RATE_TERM_MIN_GREATER_TERM_LIMIT_LOAN_PRODUCT);
+        }
+
+        // Validate that the minimum amount is not greater than the loan product's loan limit
+        if (loanProduct.getLoanLimit().compareTo(interestRateRq.getMinimumAmount()) < 0) {
+            log.warn("Transaction ID: {}, Validation failed - Minimum amount {} is greater than loan limit {}",
+                    transactionId, interestRateRq.getMinimumAmount(), loanProduct.getLoanLimit());
+            throw new DataNotValidException(MessageData.INTEREST_RATE_AMOUNT_MIN_GREATER_AMOUNT_LIMIT_LOAN_PRODUCT);
+        }
+
+        // Create a new InterestRate entity and set its properties
         InterestRate interestRate = new InterestRate();
         interestRate.setInterestRate(interestRateRq.getInterestRate());
         interestRate.setUnit(Unit.valueOf(interestRateRq.getUnit()));
         interestRate.setMinimumAmount(interestRateRq.getMinimumAmount());
         interestRate.setMinimumLoanTerm(interestRateRq.getMinimumLoanTerm());
-        interestRate.setIsActive(false);
+        interestRate.setIsActive(true);
         interestRate.setIsDeleted(false);
         interestRate.setDateActive(DateUtil.getCurrentTimeUTC7());
         interestRate.setLoanProduct(loanProduct);
         interestRateRepository.save(interestRate);
+
+        log.info("Transaction ID: {}, Successfully created new interest rate with ID {}", transactionId, interestRate.getId());
         return DataResponseWrapper.builder()
                 .data(Map.of("InterestRateId", interestRate.getId()))
                 .message(util.getMessageFromMessageSource(MessageData.CREATED_SUCCESSFUL.getKeyMessage()))
                 .status(MessageValue.STATUS_CODE_SUCCESSFULLY)
                 .build();
     }
+
 
     @Override
     @Cacheable(value = "interest_rate", key = "#id", unless = "#result == null")
@@ -79,19 +101,7 @@ public class InterestRateServiceImpl implements IInterestRateService {
 
     @Override
     public DataResponseWrapper<Object> getAll(Integer pageNumber, Integer pageSize, String transactionId) {
-        Pageable pageable = PageRequest.of(pageNumber, pageSize, Sort.by("createdDate"));
-        Page<InterestRate> interestRatePage = interestRateRepository.findAllByIsDeleted(false, pageable);
-        Map<String, Object> dataResponse = new HashMap<>();
-        dataResponse.put("totalRecord", interestRatePage.getTotalElements());
-        List<InterestRateRp> interestRateRpList = interestRatePage.stream().map(
-                MapEntityToDto::convertToInterestRateRp
-        ).toList();
-        dataResponse.put("interestRateList", interestRateRpList);
-        return DataResponseWrapper.builder()
-                .data(dataResponse)
-                .message(util.getMessageFromMessageSource(MessageData.FIND_SUCCESSFULLY.getKeyMessage()))
-                .status(MessageValue.STATUS_CODE_SUCCESSFULLY)
-                .build();
+        return null;
     }
 
     @Override
@@ -149,9 +159,9 @@ public class InterestRateServiceImpl implements IInterestRateService {
     }
 
     @Override
-    public InterestRate getInterestRateByLoanAmount(BigDecimal loanAmount, String transactionId) {
+    public InterestRate getInterestRateByLoanAmount(BigDecimal loanAmount, int term, String transactionId) {
         log.debug("transactionId: {} - Loan amount : {}", transactionId, loanAmount.toPlainString());
-        Optional<InterestRate> optionalInterestRate = interestRateRepository.findFirstByMinimumAmountLessThanEqualAndIsDeletedAndIsActiveTrueOrderByMinimumAmount(loanAmount, false);
+        Optional<InterestRate> optionalInterestRate = interestRateRepository.findFirstByMinimumAmountLessThanEqualAndMinimumLoanTermLessThanEqualAndIsDeletedAndIsActiveTrueOrderByMinimumAmountDesc(loanAmount,term, false);
         if (optionalInterestRate.isEmpty()) {
             log.info(MessageData.MESSAGE_LOG, transactionId, MessageData.INTEREST_RATE_VALID_NOT_FOUND.getMessageLog(), "Greater than ".concat(loanAmount.toPlainString()));
             throw new DataNotFoundException(MessageData.INTEREST_RATE_VALID_NOT_FOUND);

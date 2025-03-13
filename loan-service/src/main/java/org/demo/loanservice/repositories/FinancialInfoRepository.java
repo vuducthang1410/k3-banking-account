@@ -41,5 +41,5 @@ public interface FinancialInfoRepository extends JpaRepository<FinancialInfo, St
     @Query(value = queryGetLoanAmountRemainingLimit, nativeQuery = true)
     BigDecimal getLoanAmountRemainingLimit(String cifCode);
 
-   FinancialInfo findByCifCodeAndRequestStatusAndExpiredDateBefore(String cifCode, RequestStatus requestStatus, Date currentDate);
+   FinancialInfo findByCifCodeAndRequestStatusAndExpiredDateAfter(String cifCode, RequestStatus requestStatus, Date currentDate);
 }

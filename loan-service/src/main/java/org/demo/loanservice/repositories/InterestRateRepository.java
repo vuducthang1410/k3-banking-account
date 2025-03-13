@@ -14,11 +14,10 @@ import java.util.Optional;
 public interface InterestRateRepository extends JpaRepository<InterestRate, String> {
     Optional<InterestRate> findInterestRateByIdAndIsDeleted(String id, boolean isDeleted);
 
-    Page<InterestRate> findAllByIsDeleted(boolean isDeleted, Pageable pageable);
 
     Page<InterestRate> findAllByIsDeletedAndLoanProductId(Boolean isDeleted, String loanProductId, Pageable pageable);
 
-    Optional<InterestRate> findFirstByMinimumAmountLessThanEqualAndIsDeletedAndIsActiveTrueOrderByMinimumAmount(BigDecimal minimumAmount, Boolean isDeleted);
+    Optional<InterestRate> findFirstByMinimumAmountLessThanEqualAndMinimumLoanTermLessThanEqualAndIsDeletedAndIsActiveTrueOrderByMinimumAmountDesc(BigDecimal minimumAmount,int minimumLoanTerm, Boolean isDeleted);
 
     @Query("""
             SELECT ir FROM InterestRate ir 

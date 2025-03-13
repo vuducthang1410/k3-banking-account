@@ -10,7 +10,7 @@ import java.util.List;
 public interface IInterestRateService extends IBaseService<InterestRateRq>{
     InterestRate getInterestRateById(String id, String transactionId);
 
-    InterestRate getInterestRateByLoanAmount(BigDecimal loanAmount, String transactionId);
+    InterestRate getInterestRateByLoanAmount(BigDecimal loanAmount, int term, String transactionId);
 
     List<InterestRate> interestRateList(List<String> listLoanProduct);
 

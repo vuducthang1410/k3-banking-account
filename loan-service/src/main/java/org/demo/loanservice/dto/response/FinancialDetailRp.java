@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.demo.loanservice.dto.enumDto.ApplicableObjects;
 
 @Data
 @AllArgsConstructor
@@ -21,4 +22,7 @@ public class FinancialDetailRp {
     private String requestStatus;
     private String balanceBankingAccount;
     private String bankingAccountNumber;
+    private String expiredDate;
+    private String applicableObjects;
+    private Boolean isExpired;
 }

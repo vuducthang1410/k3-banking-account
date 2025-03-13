@@ -318,12 +318,12 @@ public class FinancialInfoServiceImpl implements IFinancialInfoService {
 
     @Override
     public DataResponseWrapper<Object> getDetailInfoActiveByCifCode(String cifCode, String transactionId) {
-        Date currentDate= Date.valueOf(LocalDate.now());
-        FinancialInfo financialInfo=financialInfoRepository.findByCifCodeAndRequestStatusAndExpiredDateBefore(cifCode,RequestStatus.APPROVED,currentDate);
-        CustomerDetailDTO customerDetailDTO=customerDubboService.getCustomerByCifCode(cifCode);
-        AccountInfoDTO accountInfoDTO=accountDubboService.getBankingAccount(cifCode);
+        Date currentDate = Date.valueOf(LocalDate.now());
+        FinancialInfo financialInfo = financialInfoRepository.findByCifCodeAndRequestStatusAndExpiredDateAfter(cifCode, RequestStatus.APPROVED, currentDate);
+        CustomerDetailDTO customerDetailDTO = customerDubboService.getCustomerByCifCode(cifCode);
+        AccountInfoDTO accountInfoDTO = accountDubboService.getBankingAccount(cifCode);
         return DataResponseWrapper.builder()
-                .data(convertToFinancialDetailRp(financialInfo,accountInfoDTO,customerDetailDTO))
+                .data(convertToFinancialDetailRp(financialInfo, accountInfoDTO, customerDetailDTO))
                 .status(MessageValue.STATUS_CODE_SUCCESSFULLY)
                 .message("")
                 .build();
@@ -353,22 +353,25 @@ public class FinancialInfoServiceImpl implements IFinancialInfoService {
         financialInfoRp.setAmountLoanLimit(Util.formatToVND(amountLoanRemainLimit));
         return financialInfoRp;
     }
-    private FinancialDetailRp convertToFinancialDetailRp(FinancialInfo financialInfo,AccountInfoDTO bankingAccount,CustomerDetailDTO customerDetailDTO) {
+
+    private FinancialDetailRp convertToFinancialDetailRp(FinancialInfo financialInfo, AccountInfoDTO bankingAccount, CustomerDetailDTO customerDetailDTO) {
         FinancialDetailRp financialDetailRp = new FinancialDetailRp();
         financialDetailRp.setCustomerId(customerDetailDTO.getCustomerId());
         financialDetailRp.setCustomerName(customerDetailDTO.getFullName());
         financialDetailRp.setNumberPhone(customerDetailDTO.getPhone());
         financialDetailRp.setIdentificationNumber(customerDetailDTO.getIdentityCard());
-        financialDetailRp.setDateOfBirth(DateUtil.format(DateUtil.DD_MM_YYYY_SLASH,customerDetailDTO.getDob()));
-        if(financialInfo!=null){
+        financialDetailRp.setDateOfBirth(DateUtil.format(DateUtil.DD_MM_YYYY_SLASH, customerDetailDTO.getDob()));
+        if (financialInfo != null) {
             financialDetailRp.setFinancialInfoId(financialInfo.getId());
             financialDetailRp.setRequestStatus(financialInfo.getRequestStatus().toString());
-
-            if(financialInfo.getRequestStatus().equals(RequestStatus.APPROVED)){
-                LoanAmountInfoProjection loanAmountInfoProjection =loanDetailInfoRepository.getMaxLoanLimitAndCurrentLoanAmount(customerDetailDTO.getCustomerId()).get();
+            financialDetailRp.setApplicableObjects(financialInfo.getApplicableObjects().name());
+            if (financialInfo.getRequestStatus().equals(RequestStatus.APPROVED)) {
+                LoanAmountInfoProjection loanAmountInfoProjection = loanDetailInfoRepository.getMaxLoanLimitAndCurrentLoanAmount(customerDetailDTO.getCustomerId()).get();
                 financialDetailRp.setAmountLoanLimit(Util.formatToVND(financialInfo.getLoanAmountMax()));
-                BigDecimal amountMaybeLoanRemain=loanAmountInfoProjection.getLoanAmountMax().subtract(loanAmountInfoProjection.getTotalLoanedAmount());
+                BigDecimal amountMaybeLoanRemain = loanAmountInfoProjection.getLoanAmountMax().subtract(loanAmountInfoProjection.getTotalLoanedAmount());
                 financialDetailRp.setAmountMaybeLoanRemain(Util.formatToVND(amountMaybeLoanRemain));
+                financialDetailRp.setIsExpired(financialInfo.getIsExpired());
+                financialDetailRp.setExpiredDate(DateUtil.format(DateUtil.DD_MM_YYYY_SLASH, financialInfo.getExpiredDate()));
             }
         }
         financialDetailRp.setBalanceBankingAccount(Util.formatToVND(bankingAccount.getCurrentAccountBalance()));

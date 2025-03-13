@@ -7,9 +7,11 @@ import com.system.common_library.dto.notifcation.OTP;
 import com.system.common_library.dto.notifcation.rabbitMQ.*;
 import com.system.common_library.dto.response.transaction.TransactionNotificationDTO;
 import com.system.common_library.dto.user.CustomerDetailDTO;
+import com.system.common_library.service.CustomerDubboService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -22,17 +24,17 @@ public class HandleEventServiceImpl implements HandleEventService {
     private final SMSRegistationService smsRegistationService;
     private final SystemService systemService;
 //
-//    @DubboReference
-//    private final CustomerDubboService customerDubboService;
+    @DubboReference
+    private final CustomerDubboService customerDubboService;
 
     CustomerDetailDTO queryCustomerDetail(String customerCIF) {
-//         return (CustomerDetailDTO) customerDubboService.getCustomerByCifCode(customerCIF); //process customerCIF to get customer detail
-        return CustomerDetailDTO.builder()
-                .cifCode(customerCIF)
-                .phone("0703425730")
-                .fullName("Pham Ngoc Anh Thu")
-                .mail("chirido0807@gmail.com")
-                .build();
+         return (CustomerDetailDTO) customerDubboService.getCustomerByCifCode(customerCIF); //process customerCIF to get customer detail
+//        return CustomerDetailDTO.builder()
+//                .cifCode(customerCIF)
+//                .phone("0703425730")
+//                .fullName("Pham Ngoc Anh Thu")
+//                .mail("chirido0807@gmail.com")
+//                .build();
     }
     @Override
     public boolean sendOTP(OTP otp, CustomerDetailDTO customer) {

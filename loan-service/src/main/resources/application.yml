@@ -48,11 +48,16 @@ spring:
       port: 6379
       host: localhost
       connect-timeout: 3000
+      password: 12345
   rabbitmq:
     host: ${DOCKER_HOST:localhost}
     port: 5672
     username: ${RABBITMQ_USER:root}
     password: ${RABBITMQ_PASS:12345}
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 50MB
 logging:
   file:
     path: logs/loan_service
