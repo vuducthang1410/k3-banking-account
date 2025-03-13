@@ -1,5 +1,7 @@
 package org.demo.loanservice.services.backgoundService;
 
+import com.system.common_library.dto.notifcation.rabbitMQ.LoanOverDueNoti;
+import com.system.common_library.dto.notifcation.rabbitMQ.LoanReminderNoti;
 import com.system.common_library.dto.response.account.AccountInfoDTO;
 import com.system.common_library.dto.transaction.loan.CreateLoanTransactionDTO;
 import com.system.common_library.service.AccountDubboService;
@@ -8,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.apache.dubbo.config.annotation.DubboReference;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.demo.loanservice.common.DateUtil;
 import org.demo.loanservice.dto.enumDto.DeftRepaymentStatus;
 import org.demo.loanservice.dto.enumDto.PaymentTransactionType;
 import org.demo.loanservice.dto.enumDto.PaymentType;
@@ -16,6 +19,7 @@ import org.demo.loanservice.entities.LoanPenalties;
 import org.demo.loanservice.entities.PaymentSchedule;
 import org.demo.loanservice.repositories.LoanPenaltiesRepository;
 import org.demo.loanservice.repositories.PaymentScheduleRepository;
+import org.demo.loanservice.services.INotificationService;
 import org.demo.loanservice.services.IPaymentScheduleService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -38,6 +42,7 @@ public class LoanPaymentReminderScheduleService {
     private AccountDubboService accountDubboService;
     @DubboReference
     private TransactionDubboService transactionDubboService;
+    private INotificationService notificationService;
     private static final Logger log = LogManager.getLogger(LoanPaymentReminderScheduleService.class);
 
     /**
@@ -88,8 +93,13 @@ public class LoanPaymentReminderScheduleService {
         log.info("Notifying {} user(s) about upcoming due payments.", upcomingPayments.size());
         upcomingPayments.forEach(paymentSchedule -> {
             log.debug("Loan ID: {}, Due Date: {}", paymentSchedule.getLoanDetailInfo().getDisbursementInfoHistory().getLoanAccountId(), paymentSchedule.getDueDate());
-            CreateLoanTransactionDTO loanTransactionDTO = new CreateLoanTransactionDTO();
-            transactionDubboService.createLoanTransaction(loanTransactionDTO);
+            LoanReminderNoti loanReminderNoti=new LoanReminderNoti();
+            String cifCode=paymentSchedule.getLoanDetailInfo().getFinancialInfo().getCifCode();
+            loanReminderNoti.setDueDate(DateUtil.convertTimeStampToLocalDate(paymentSchedule.getDueDate()));
+            loanReminderNoti.setCustomerCIF(cifCode);
+            loanReminderNoti.setContractNumber(paymentSchedule.getLoanDetailInfo().getId());
+            loanReminderNoti.setAmountDue(paymentSchedule.getAmountRepayment().add(paymentSchedule.getAmountInterestRate()));
+            notificationService.sendNotificationLoanReminder(loanReminderNoti);
         });
 
         log.info("Upcoming due payment notifications sent.");
@@ -126,16 +136,24 @@ public class LoanPaymentReminderScheduleService {
                     .multiply(new BigDecimal("1.5"));
             penalty.setFinedAmount(fineAmount);
             penaltiesList.add(penalty);
-
+            String cifCode=paymentSchedule.getLoanDetailInfo().getFinancialInfo().getCifCode();
             AccountInfoDTO accountLoanInfoDTO = accountDubboService.getLoanAccountDTO(paymentSchedule.getLoanDetailInfo().getDisbursementInfoHistory().getLoanAccountId());
             CreateLoanTransactionDTO loanTransactionDTO = new CreateLoanTransactionDTO();
             loanTransactionDTO.setAmount(fineAmount);
             loanTransactionDTO.setDescription(PaymentType.PENALTY.name());
-            loanTransactionDTO.setCifCode(paymentSchedule.getLoanDetailInfo().getFinancialInfo().getCifCode());
+            loanTransactionDTO.setCifCode(cifCode);
             loanTransactionDTO.setLoanAccount(accountLoanInfoDTO.getAccountNumber());
             loanTransactionDTO.setNote(PaymentTransactionType.OVERDUE_PAYMENT_PENALTY.name());
             transactionDubboService.createLoanTransaction(loanTransactionDTO);
 
+            LoanOverDueNoti loanOverDueNoti=new LoanOverDueNoti();
+            loanOverDueNoti.setAmountDue(paymentSchedule.getAmountRepayment().add(paymentSchedule.getAmountInterestRate()));
+            loanOverDueNoti.setDueDate(DateUtil.convertTimeStampToLocalDate(paymentSchedule.getDueDate()));
+            loanOverDueNoti.setCustomerCIF(cifCode);
+            loanOverDueNoti.setPenaltyFee(fineAmount);
+            loanOverDueNoti.setContractNumber(paymentSchedule.getLoanDetailInfo().getId());
+            loanOverDueNoti.setOverdueDays((int) DateUtil.daysElapsedFromTimestamp(paymentSchedule.getDueDate().getTime()));
+            notificationService.sendNotificationOverdue(loanOverDueNoti);
             log.debug("Penalty applied: Loan ID: {},Amount:{},Interest rate: {}, Fine Amount: {}",
                     paymentSchedule.getLoanDetailInfo().getDisbursementInfoHistory().getLoanAccountId(),
                     paymentSchedule.getAmountRepayment(),

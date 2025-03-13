@@ -5,11 +5,13 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.Calendar;
 import java.util.Date;
 
@@ -85,5 +87,12 @@ public class DateUtil {
     }
     public static LocalDate convertTimeStampToLocalDate(Timestamp timestamp){
         return timestamp.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+    }
+    public static long daysElapsedFromTimestamp(long timestamp) {
+        LocalDate pastDate = Instant.ofEpochMilli(timestamp)
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+        LocalDate currentDate = LocalDate.now();
+        return ChronoUnit.DAYS.between(pastDate, currentDate);
     }
 }
