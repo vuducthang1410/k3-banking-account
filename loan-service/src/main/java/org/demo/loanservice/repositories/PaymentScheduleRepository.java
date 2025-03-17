@@ -32,7 +32,7 @@ public interface PaymentScheduleRepository extends JpaRepository<PaymentSchedule
                         GROUP BY rps.id, rps.amount_interest_rate, rps.amount_repayment, rps.due_date,
                                  rps.is_paid, rps.is_paid_interest, rps.payment_interest_date,
                                  rps.payment_schedule_date, rps.status, rps.name
-                        ORDER by rps.created_date
+                        ORDER by rps.due_date
             """;
     String countSizeListPaymentScheduleByLoanDetailInfoId = """
                 SELECT count(*)

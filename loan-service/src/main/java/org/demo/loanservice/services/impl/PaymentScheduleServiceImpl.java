@@ -1,6 +1,7 @@
 package org.demo.loanservice.services.impl;
 
 
+import com.system.common_library.dto.notifcation.rabbitMQ.LoanCompletionNoti;
 import com.system.common_library.dto.response.account.AccountInfoDTO;
 import com.system.common_library.dto.transaction.loan.TransactionLoanResultDTO;
 import com.system.common_library.enums.ObjectStatus;
@@ -24,6 +25,7 @@ import org.demo.loanservice.dto.projection.RepaymentScheduleProjection;
 import org.demo.loanservice.dto.request.DeftRepaymentRq;
 import org.demo.loanservice.dto.response.PaymentScheduleDetailRp;
 import org.demo.loanservice.dto.response.PaymentScheduleRp;
+import org.demo.loanservice.entities.FinancialInfo;
 import org.demo.loanservice.entities.LoanDetailInfo;
 import org.demo.loanservice.entities.LoanPenalties;
 import org.demo.loanservice.entities.PaymentSchedule;
@@ -32,6 +34,7 @@ import org.demo.loanservice.repositories.LoanPenaltiesRepository;
 import org.demo.loanservice.repositories.PaymentScheduleRepository;
 import org.demo.loanservice.repositories.RepaymentHistoryRepository;
 import org.demo.loanservice.services.ILoanDetailRepaymentScheduleService;
+import org.demo.loanservice.services.INotificationService;
 import org.demo.loanservice.services.IPaymentScheduleService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -62,6 +65,7 @@ public class PaymentScheduleServiceImpl implements IPaymentScheduleService {
     private AccountDubboService accountDubboService;
     @DubboReference
     private TransactionDubboService transactionDubboService;
+    private INotificationService notificationService;
     private final Logger log = LogManager.getLogger(PaymentScheduleServiceImpl.class);
 
     @Override
@@ -298,14 +302,24 @@ public class PaymentScheduleServiceImpl implements IPaymentScheduleService {
         }
     }
 
-    private void checkLoanAccountBalanceToCloseLoan(PaymentSchedule paymentSchedule, AccountInfoDTO loaAccountInfoDto, TransactionLoanResultDTO resultExecuteTransaction, String transactionId) {
-        if (resultExecuteTransaction.getBalanceLoanAccount().compareTo(BigDecimal.ZERO) == 0) {
-            String loanDetailInfo = paymentSchedule.getLoanDetailInfo().getId();
-            loanDetailRepaymentScheduleService.updateLoanStatus(loanDetailInfo, transactionId);
+    private void checkLoanAccountBalanceToCloseLoan(PaymentSchedule paymentSchedule,
+                                                    AccountInfoDTO loaAccountInfoDto,
+                                                    TransactionLoanResultDTO resultExecuteTransaction,
+                                                    String transactionId) {
+        if (resultExecuteTransaction.getBalanceLoanAccount().compareTo(BigDecimal.ONE) < 0) {
+            String loanDetailInfoId = paymentSchedule.getLoanDetailInfo().getId();
+            loanDetailRepaymentScheduleService.updateLoanStatus(loanDetailInfoId, transactionId);
             AccountInfoDTO accountInfoDTO = accountDubboService.updateAccountStatus(loaAccountInfoDto.getAccountNumber(), ObjectStatus.CLOSED);
             if (accountInfoDTO.getStatusAccount().compareTo(ObjectStatus.CLOSED) != 0) {
                 throw new ServerErrorException();
             }
+            FinancialInfo financialInfo=paymentSchedule.getLoanDetailInfo().getFinancialInfo();
+            LoanCompletionNoti loanCompletionNoti= new LoanCompletionNoti();
+            loanCompletionNoti.setAmountPaid(paymentSchedule.getLoanDetailInfo().getLoanAmount());
+            loanCompletionNoti.setCustomerCIF(financialInfo.getCifCode());
+            loanCompletionNoti.setSettlementDate(LocalDate.now());
+            loanCompletionNoti.setContractNumber(loanDetailInfoId);
+            notificationService.sendNotificationLoanComplete(loanCompletionNoti);
         }
     }
 

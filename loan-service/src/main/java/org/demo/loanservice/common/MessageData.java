@@ -20,7 +20,8 @@ public enum MessageData {
     DELETED_SUCCESSFUL("deleted.successful", "Deleted successfully", "20000"),
     FIND_SUCCESSFULLY("findObject.success", "Find object successfully", "20000"),
     UPDATE_SUCCESSFULLY("updateObject.success", "Update status object successfully", "20000"),
-
+    PAYMENT_LOAN_SUCCESSFULLY("payment_loan.successful", "Payment loan successful", "20000"),
+    LOAN_REGISTER_SUCCESSFULLY("loan.register.successful", "Loan register successful", "20000"),
     FINANCIAL_INFO_NOT_APPROVE("financial_info.not_approve", "Financial info not approve", "30301"),
     LOAN_AMOUNT_LARGER_LOAN_LIMIT("loan_amount.larger.loan_limit", "Loan amount larger than loan amount limit: loan amount limit= {}", "30302"),
     LOAN_TERM_LARGER_THAN_LIMIT("loan_term.larger.loan_term_limit", "Loan term larger than loan term limit: loan term limit= {}", "30303"),
@@ -38,6 +39,7 @@ public enum MessageData {
     APPROVE_INDIVIDUAL_CUSTOMER_DISBURSEMENT_ERROR("approve.individual_customer.disbursement.error","execute error when approve loan","30315"),
     INTEREST_RATE_TERM_MIN_GREATER_TERM_LIMIT_LOAN_PRODUCT("interest_rate.term_min_greater_term_limit.loan_product", "Minimum term interest rate is greater than term limit in loan product", "30316"),
     INTEREST_RATE_AMOUNT_MIN_GREATER_AMOUNT_LIMIT_LOAN_PRODUCT("interest_rate.amount_min_greater_amount_limit.loan_product", "Minimum amount interest rate is greater than amount limit in loan product", "30317"),
+    FINANCIAL_INFO_IS_REGISTERED("financial_info.is_registered", "Financial info is registered", "30318"),
 
     DATA_NOT_FOUND("data.notFound", "Data not found", "40400"),
     INTEREST_RATE_NOT_FOUND("interest_rate.not_found", "Interest rate not found", "40401"),
@@ -48,7 +50,6 @@ public enum MessageData {
     INTEREST_RATE_VALID_NOT_FOUND("interest_rate.valid.not_found", "Not found interest rate valid::condition = {}", "40406"),
     PAYMENT_SCHEDULE_NOT_FOUND("payment_schedule.not_found", "Not found payment schedule valid", "40407"),
     LOAN_LIMIT_AND_TOTAL_LOAN_AMOUNT_NOT_FOUND("loan_limit_and_total_loan_amount.not_found", "Not found information for loan amount and loan amount limit of customer", "40408"),
-
     SERVER_ERROR("server.error.message", "Internal server error", "50000");
     private final String keyMessage;
     private final String messageLog;

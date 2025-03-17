@@ -18,14 +18,17 @@ import org.demo.loanservice.controllers.exception.ServerErrorException;
 import org.demo.loanservice.dto.CICResponse;
 import org.demo.loanservice.dto.enumDto.ApplicableObjects;
 import org.demo.loanservice.dto.enumDto.DocumentType;
+import org.demo.loanservice.dto.enumDto.LoanCategory;
 import org.demo.loanservice.dto.enumDto.RequestStatus;
 import org.demo.loanservice.dto.enumDto.Unit;
 import org.demo.loanservice.dto.projection.LoanAmountInfoProjection;
+import org.demo.loanservice.dto.projection.StatisticalLoanProjection;
 import org.demo.loanservice.dto.request.ApproveFinancialInfoRq;
 import org.demo.loanservice.dto.request.FinancialInfoRq;
 import org.demo.loanservice.dto.response.FinancialDetailRp;
 import org.demo.loanservice.dto.response.FinancialInfoRp;
 import org.demo.loanservice.dto.response.LegalDocumentRp;
+import org.demo.loanservice.dto.response.PieChartData;
 import org.demo.loanservice.entities.FinancialInfo;
 import org.demo.loanservice.entities.LegalDocuments;
 import org.demo.loanservice.repositories.FinancialInfoRepository;
@@ -44,8 +47,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Date;
-import java.time.LocalDate;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -68,6 +71,15 @@ public class FinancialInfoServiceImpl implements IFinancialInfoService {
     @Override
     @Transactional
     public DataResponseWrapper<Object> saveInfoIndividualCustomer(FinancialInfoRq financialInfoRq, List<MultipartFile> incomeVerificationDocuments, String transactionId) {
+        List<FinancialInfo> financialInfoList = financialInfoRepository
+                .findAllByRequestStatusOrRequestStatusAndIsDeletedFalseAndCifCodeAndIsExpiredFalse(
+                        RequestStatus.APPROVED,
+                        RequestStatus.PENDING,
+                        financialInfoRq.getCifCode());
+        if (!financialInfoList.isEmpty()) {
+            log.info(MessageData.MESSAGE_LOG, MessageData.FINANCIAL_INFO_IS_REGISTERED.getMessageLog(), transactionId);
+            throw new DataNotValidException(MessageData.FINANCIAL_INFO_IS_REGISTERED);
+        }
         CustomerDetailDTO customerInfo;
         // Fetch customer information by CIF code
         try {
@@ -97,7 +109,6 @@ public class FinancialInfoServiceImpl implements IFinancialInfoService {
 
             // Fetch credit score from CIC service (To-Do: Update input parameters dynamically)
             CICResponse cicResponse = cicService.getCreditScore("079123456789", "vu duc thang", "", "0123456789");
-
             // Create and save financial information record
             FinancialInfo financialInfo = new FinancialInfo();
             financialInfo.setCustomerId(customerInfo.getCustomerId());
@@ -110,7 +121,7 @@ public class FinancialInfoServiceImpl implements IFinancialInfoService {
             financialInfo.setCreditScore(cicResponse.getCreditScore());
             financialInfo.setDebtStatus(cicResponse.getDebtStatus());
             financialInfo.setIsExpired(false);
-            financialInfo.setExpiredDate(new Date(DateUtil.getDateOfAfterNMonth(6).getTime())); // Set expiry date to 6 months later
+            financialInfo.setExpiredDate(new Date(DateUtil.getDateOfAfterNMonth(1).getTime())); // Set expiry date to 6 months later
             financialInfo.setIsDeleted(false);
             financialInfo.setLastUpdatedCreditReview(DateUtil.convertStringToTimeStamp(cicResponse.getLastUpdated()));
             financialInfo.setApplicableObjects(ApplicableObjects.INDIVIDUAL_CUSTOMER);
@@ -220,7 +231,8 @@ public class FinancialInfoServiceImpl implements IFinancialInfoService {
         financialInfo.setRequestStatus(RequestStatus.valueOf(financialInfoRq.getStatusFinancialInfo()));
         financialInfo.setNote(financialInfoRq.getNote());
         financialInfo.setLoanAmountMax(financialInfoRq.getLoanAmountLimit());
-        financialInfoRepository.save(financialInfo);
+        financialInfo.setExpiredDate(new Date(DateUtil.getDateOfAfterNMonth(6).getTime()));
+        financialInfoRepository.saveAndFlush(financialInfo);
         //create and push notify
         if (financialInfoRq.getStatusFinancialInfo().equals(RequestStatus.APPROVED.name())) {
             LoanFinancialReviewSuccessNoti loanFinancialReviewSuccessNoti = new LoanFinancialReviewSuccessNoti();
@@ -235,6 +247,56 @@ public class FinancialInfoServiceImpl implements IFinancialInfoService {
                 .message("")
                 .build();
     }
+
+    @Override
+    public DataResponseWrapper<Object> getStatisticalLoan(String transactionId, String cifCode) {
+        log.info("transactionId: {} :: Start fetching statistical loan data for CIF code: {}", transactionId, cifCode);
+
+        // Retrieve statistical loan data from the repository
+        StatisticalLoanProjection projection = financialInfoRepository.getStatisticalLoan(cifCode);
+        if (projection == null) {
+            log.warn("transactionId: {} :: No statistical loan data found for CIF code: {}", transactionId, cifCode);
+            throw new DataNotFoundException(MessageData.SERVER_ERROR);
+        }
+
+        // Extract loan data from projection
+        BigDecimal totalUnpaid = projection.getTotalUnpaidRepayment();
+        BigDecimal totalPending = projection.getTotalPendingLoanAmount();
+        BigDecimal totalPaid = projection.getTotalPaidRepayment();
+
+        // Calculate total loan amount
+        BigDecimal total = totalUnpaid.add(totalPending).add(totalPaid);
+        log.info("transactionId: {} :: Loan statistics - Total Unpaid: {}, Total Pending: {}, Total Paid: {}, Total: {}",
+                transactionId, totalUnpaid, totalPending, totalPaid, total);
+
+        // Create pie chart data
+        List<PieChartData> chartStatisticalLoanData = createPieChartData(totalUnpaid, totalPaid, totalPending, total);
+
+        // Return response
+        log.info("transactionId: {} :: Successfully retrieved statistical loan data for CIF code: {}", transactionId, cifCode);
+        return DataResponseWrapper.builder()
+                .data(chartStatisticalLoanData)
+                .status(MessageValue.STATUS_CODE_SUCCESSFULLY)
+                .message("Success")
+                .build();
+    }
+
+
+    private static List<PieChartData> createPieChartData(BigDecimal unpaid, BigDecimal paid, BigDecimal pending, BigDecimal total) {
+        List<PieChartData> chartData = new ArrayList<>();
+
+        if (total.compareTo(BigDecimal.ZERO) > 0) {
+            chartData.add(new PieChartData(LoanCategory.UNPAID_REPAYMENT.getLabel(), unpaid.divide(total, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)), Util.formatToVND(unpaid)));
+            chartData.add(new PieChartData(LoanCategory.PAID_REPAYMENT.getLabel(), paid.divide(total, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)), Util.formatToVND(paid)));
+            chartData.add(new PieChartData(LoanCategory.PENDING_LOAN.getLabel(), pending.divide(total, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)), Util.formatToVND(pending)));
+        } else {
+            chartData.add(new PieChartData(LoanCategory.UNPAID_REPAYMENT.getLabel(), BigDecimal.ZERO, Util.formatToVND(unpaid)));
+            chartData.add(new PieChartData(LoanCategory.PAID_REPAYMENT.getLabel(), BigDecimal.ZERO, Util.formatToVND(paid)));
+            chartData.add(new PieChartData(LoanCategory.PENDING_LOAN.getLabel(), BigDecimal.ZERO, Util.formatToVND(pending)));
+        }
+        return chartData;
+    }
+
 
     @Override
     public DataResponseWrapper<Object> verifyFinancialInfo(String transactionId, String customerId) {
@@ -258,9 +320,10 @@ public class FinancialInfoServiceImpl implements IFinancialInfoService {
     private FinancialInfoRp convertToFinancialInfoRp(FinancialInfo financialInfo, CustomerDetailDTO customerDetailDTO, Boolean isDetail) {
         FinancialInfoRp financialInfoRp = new FinancialInfoRp();
         financialInfoRp.setCustomerId(financialInfo.getCustomerId());
-        financialInfoRp.setCustomerName(customerDetailDTO.getFullName());
+        if (customerDetailDTO != null)
+            financialInfoRp.setCustomerName(customerDetailDTO.getFullName());
         financialInfoRp.setFinancialInfoId(financialInfo.getId());
-        financialInfoRp.setIncome(financialInfo.getIncome());
+        financialInfoRp.setIncome(Util.formatToVND(new BigDecimal(financialInfo.getIncome())));
         financialInfoRp.setUnit(financialInfo.getUnit().toString());
         financialInfoRp.setCreditScore(financialInfo.getCreditScore().toString());
         financialInfoRp.setIncomeSource(financialInfo.getIncomeSource());
@@ -318,12 +381,12 @@ public class FinancialInfoServiceImpl implements IFinancialInfoService {
 
     @Override
     public DataResponseWrapper<Object> getDetailInfoActiveByCifCode(String cifCode, String transactionId) {
-        Date currentDate = Date.valueOf(LocalDate.now());
-        FinancialInfo financialInfo = financialInfoRepository.findByCifCodeAndRequestStatusAndExpiredDateAfter(cifCode, RequestStatus.APPROVED, currentDate);
+        List<FinancialInfo> listFinancialInfo = financialInfoRepository
+                .findAllByRequestStatusOrRequestStatusAndIsDeletedFalseAndCifCodeAndIsExpiredFalse(RequestStatus.APPROVED,RequestStatus.PENDING,cifCode);
         CustomerDetailDTO customerDetailDTO = customerDubboService.getCustomerByCifCode(cifCode);
         AccountInfoDTO accountInfoDTO = accountDubboService.getBankingAccount(cifCode);
         return DataResponseWrapper.builder()
-                .data(convertToFinancialDetailRp(financialInfo, accountInfoDTO, customerDetailDTO))
+                .data(convertToFinancialDetailRp(accountInfoDTO, customerDetailDTO,listFinancialInfo))
                 .status(MessageValue.STATUS_CODE_SUCCESSFULLY)
                 .message("")
                 .build();
@@ -354,24 +417,31 @@ public class FinancialInfoServiceImpl implements IFinancialInfoService {
         return financialInfoRp;
     }
 
-    private FinancialDetailRp convertToFinancialDetailRp(FinancialInfo financialInfo, AccountInfoDTO bankingAccount, CustomerDetailDTO customerDetailDTO) {
+    private FinancialDetailRp convertToFinancialDetailRp(
+                                                         AccountInfoDTO bankingAccount,
+                                                         CustomerDetailDTO customerDetailDTO,
+                                                         List<FinancialInfo> financialInfoList) {
         FinancialDetailRp financialDetailRp = new FinancialDetailRp();
         financialDetailRp.setCustomerId(customerDetailDTO.getCustomerId());
         financialDetailRp.setCustomerName(customerDetailDTO.getFullName());
         financialDetailRp.setNumberPhone(customerDetailDTO.getPhone());
         financialDetailRp.setIdentificationNumber(customerDetailDTO.getIdentityCard());
         financialDetailRp.setDateOfBirth(DateUtil.format(DateUtil.DD_MM_YYYY_SLASH, customerDetailDTO.getDob()));
-        if (financialInfo != null) {
+        financialDetailRp.setIsRegistered(financialInfoList.isEmpty());
+        if (!financialInfoList.isEmpty()) {
+            FinancialInfo financialInfo = financialInfoList.get(0);
             financialDetailRp.setFinancialInfoId(financialInfo.getId());
             financialDetailRp.setRequestStatus(financialInfo.getRequestStatus().toString());
             financialDetailRp.setApplicableObjects(financialInfo.getApplicableObjects().name());
             if (financialInfo.getRequestStatus().equals(RequestStatus.APPROVED)) {
-                LoanAmountInfoProjection loanAmountInfoProjection = loanDetailInfoRepository.getMaxLoanLimitAndCurrentLoanAmount(customerDetailDTO.getCustomerId()).get();
-                financialDetailRp.setAmountLoanLimit(Util.formatToVND(financialInfo.getLoanAmountMax()));
-                BigDecimal amountMaybeLoanRemain = loanAmountInfoProjection.getLoanAmountMax().subtract(loanAmountInfoProjection.getTotalLoanedAmount());
-                financialDetailRp.setAmountMaybeLoanRemain(Util.formatToVND(amountMaybeLoanRemain));
-                financialDetailRp.setIsExpired(financialInfo.getIsExpired());
-                financialDetailRp.setExpiredDate(DateUtil.format(DateUtil.DD_MM_YYYY_SLASH, financialInfo.getExpiredDate()));
+                LoanAmountInfoProjection loanAmountInfoProjection = loanDetailInfoRepository.getMaxLoanLimitAndCurrentLoanAmount(customerDetailDTO.getCustomerId()).orElse(null);
+                if(loanAmountInfoProjection!=null) {
+                    financialDetailRp.setAmountLoanLimit(Util.formatToVND(financialInfo.getLoanAmountMax()));
+                    BigDecimal amountMaybeLoanRemain = loanAmountInfoProjection.getLoanAmountMax().subtract(loanAmountInfoProjection.getTotalLoanedAmount());
+                    financialDetailRp.setAmountMaybeLoanRemain(Util.formatToVND(amountMaybeLoanRemain));
+                    financialDetailRp.setIsExpired(financialInfo.getIsExpired());
+                    financialDetailRp.setExpiredDate(DateUtil.format(DateUtil.DD_MM_YYYY_SLASH, financialInfo.getExpiredDate()));
+                }
             }
         }
         financialDetailRp.setBalanceBankingAccount(Util.formatToVND(bankingAccount.getCurrentAccountBalance()));

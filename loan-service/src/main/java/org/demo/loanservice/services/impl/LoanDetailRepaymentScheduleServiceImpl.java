@@ -31,6 +31,6 @@ public class LoanDetailRepaymentScheduleServiceImpl implements ILoanDetailRepaym
     public void updateLoanStatus(String loanDetailInfoId, String transactionId) {
         LoanDetailInfo loanDetailInfo=getLoanDetailInfoById(loanDetailInfoId, transactionId);
         loanDetailInfo.setLoanStatus(LoanStatus.PAID_OFF);
-        loanDetailInfoRepository.save(loanDetailInfo);
+        loanDetailInfoRepository.saveAndFlush(loanDetailInfo);
     }
 }

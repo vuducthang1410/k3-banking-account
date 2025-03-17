@@ -25,4 +25,5 @@ public class FinancialDetailRp {
     private String expiredDate;
     private String applicableObjects;
     private Boolean isExpired;
+    private Boolean isRegistered;
 }

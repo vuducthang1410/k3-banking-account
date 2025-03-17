@@ -169,7 +169,7 @@ public class LoanDetailInfoServiceImpl implements ILoanDetailInfoService {
         //todo:Call notification service
         return DataResponseWrapper.builder()
                 .data(loanDetailInfo.getId())
-                .message("Loan registration successful")
+                .message(util.getMessageFromMessageSource(MessageData.LOAN_REGISTER_SUCCESSFULLY.getKeyMessage()))
                 .status(MessageValue.STATUS_CODE_SUCCESSFULLY)
                 .build();
     }
@@ -543,6 +543,8 @@ public class LoanDetailInfoServiceImpl implements ILoanDetailInfoService {
             loanCompletionNoti.setContractNumber(loanDetailInfo.getId());
             notificationService.sendNotificationLoanComplete(loanCompletionNoti);
             return DataResponseWrapper.builder()
+                    .status(MessageValue.STATUS_CODE_SUCCESSFULLY)
+                    .message(util.getMessageFromMessageSource(MessageData.PAYMENT_LOAN_SUCCESSFULLY.getKeyMessage()))
                     .build();
         } catch (Exception e) {
             //rollback transaction

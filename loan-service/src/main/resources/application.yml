@@ -25,8 +25,8 @@ spring:
     password: ${DB_PASSWORD:123456}
   jpa:
     hibernate:
-      #      ddl-auto: create
-      ddl-auto: update
+      ddl-auto: create
+    #      ddl-auto: update
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
@@ -91,5 +91,8 @@ rabbitmq:
         completion: loan.completion
         overdue_debt_loan: loan.overdue.debt
         create_account_loan: loan.create.account
-
+key:
+  redis:
+    data:
+      financialInfo: financial-info
 

@@ -162,4 +162,11 @@ public class FinancialInfoController {
     ){
         return ResponseEntity.ok(financialInfoService.getFinancialInfoByCifCode(cifCode,transactionId));
     }
+    @GetMapping("/individual-customer/financial-info/statistical-loan-by-cifCode")
+    public ResponseEntity<DataResponseWrapper<Object>> getStatisticalLoanByCifCode(
+            @RequestHeader(name = "transactionId")String transactionId,
+            @RequestParam(name = "cifCode")String cifCode
+    ){
+        return ResponseEntity.ok(financialInfoService.getStatisticalLoan(transactionId,cifCode));
+    }
 }
