@@ -27,8 +27,4 @@ public class FinancialInfoRq {
     @NotBlank
     @Schema(description = "Type of income", example = "Fixed")
     private String incomeType;
-
-    @NotBlank
-    @Schema(description = "Customer Identification File (CIF) Code", example = "CIF123456")
-    private String cifCode;
 }

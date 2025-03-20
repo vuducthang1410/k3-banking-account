@@ -12,7 +12,7 @@ import com.system.customer_service.dto.request.*;
 import com.system.customer_service.dto.response.IntrospectResponse;
 import com.system.customer_service.dubbo.mapper.CustomerDubboMapper;
 import com.system.customer_service.entity.Customer;
-import com.system.customer_service.enums.TypeOTP;
+import com.system.customer_service.dto.enums.TypeOTP;
 import com.system.customer_service.exception.AppException;
 import com.system.customer_service.exception.ErrorCode;
 import com.system.customer_service.redis.CustomerCode;

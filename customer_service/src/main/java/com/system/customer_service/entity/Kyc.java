@@ -1,6 +1,6 @@
 package com.system.customer_service.entity;
 
-import com.system.customer_service.enums.KycStatus;
+import com.system.customer_service.dto.enums.KycStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;

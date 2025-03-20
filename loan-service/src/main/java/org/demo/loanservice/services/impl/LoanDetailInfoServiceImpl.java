@@ -25,6 +25,7 @@ import org.demo.loanservice.controllers.exception.DataNotFoundException;
 import org.demo.loanservice.controllers.exception.DataNotValidException;
 import org.demo.loanservice.controllers.exception.DataNotValidWithConditionException;
 import org.demo.loanservice.controllers.exception.ServerErrorException;
+import org.demo.loanservice.dto.CustomUserDetail;
 import org.demo.loanservice.dto.MapEntityToDto;
 import org.demo.loanservice.dto.TransactionInfo;
 import org.demo.loanservice.dto.enumDto.*;
@@ -87,8 +88,9 @@ public class LoanDetailInfoServiceImpl implements ILoanDetailInfoService {
 
     @Override
     public DataResponseWrapper<Object> registerIndividualCustomerLoan(IndividualCustomerInfoRq individualCustomerInfoRq, String transactionId) {
+        CustomUserDetail currentUserSession=util.getCurrentUserSession();
         // Retrieve the CIF code of the authenticated customer
-        CustomerDetailDTO customerInfo = customerDubboService.getCustomerByCifCode(individualCustomerInfoRq.getCifCode());
+        CustomerDetailDTO customerInfo = customerDubboService.getCustomerByCifCode(currentUserSession.getCifCode());
         // Retrieve financial information for the customer
         FinancialInfo financialInfo = financialInfoService.getFinancialInfoByCustomerId(customerInfo.getCustomerId(), transactionId);
 

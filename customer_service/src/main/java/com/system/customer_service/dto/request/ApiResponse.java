@@ -1,6 +1,7 @@
 package com.system.customer_service.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -17,5 +18,6 @@ public class ApiResponse<T> implements Serializable {
     private int code = 1000;
 
     private String message;
+    @JsonProperty(value = "data")
     private T result;
 }

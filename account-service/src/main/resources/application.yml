@@ -57,9 +57,23 @@ spring:
 dubbo:
   application:
     name: account-service
+    qos-port: 33333
+  provider:
+    delay: -1
+    export: true
+  consumer:
+    check: false
+    lazy: true
   protocol:
     name: dubbo
     port: 20882
+    qos-port: 33333
+    provider:
+      delay: -1
+      export: true
+    consumer:
+      check: false
+      lazy: true
   registry:
     address: zookeeper://${DOCKER_HOST:localhost}:2181
 

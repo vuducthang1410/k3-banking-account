@@ -5,7 +5,9 @@ import feign.QueryMap;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 
@@ -35,4 +37,11 @@ public interface IdentityClient {
 
     @PostMapping(value = "/admin/realms/klb/users", consumes = MediaType.APPLICATION_JSON_VALUE)
     ResponseEntity<?> createUser(@RequestHeader("authorization") String token, @RequestBody UserCreationParam param);
+
+    @PutMapping("/admin/realms/klb/users/{userId}")
+    ResponseEntity<Void> updateUser(
+            @RequestHeader("Authorization") String token,
+            @PathVariable("userId") String userId,
+            @RequestBody Map<String, Object> updateUserRequest
+    );
 }

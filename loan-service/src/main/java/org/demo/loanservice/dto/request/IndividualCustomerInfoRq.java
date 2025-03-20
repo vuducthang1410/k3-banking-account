@@ -33,7 +33,4 @@ public class IndividualCustomerInfoRq {
     @UnitValidation
     @Schema(description = "Loan term unit (e.g., months, years)", example = "MONTHS")
     private String loanUnit;
-
-    @Schema(description = "Customer Identification File (CIF) Code", example = "CIF123456")
-    private String cifCode;
 }

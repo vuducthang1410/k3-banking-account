@@ -2,7 +2,7 @@ package com.system.customer_service.controller;
 
 import com.system.customer_service.dto.request.ApiResponse;
 import com.system.customer_service.dto.response.KycResponse;
-import com.system.customer_service.enums.KycStatus;
+import com.system.customer_service.dto.enums.KycStatus;
 import com.system.customer_service.service.KycService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;

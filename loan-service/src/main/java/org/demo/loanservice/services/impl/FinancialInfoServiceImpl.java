@@ -11,11 +11,16 @@ import lombok.RequiredArgsConstructor;
 import org.apache.dubbo.config.annotation.DubboReference;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.demo.loanservice.common.*;
+import org.demo.loanservice.common.DataResponseWrapper;
+import org.demo.loanservice.common.DateUtil;
+import org.demo.loanservice.common.MessageData;
+import org.demo.loanservice.common.MessageValue;
+import org.demo.loanservice.common.Util;
 import org.demo.loanservice.controllers.exception.DataNotFoundException;
 import org.demo.loanservice.controllers.exception.DataNotValidException;
 import org.demo.loanservice.controllers.exception.ServerErrorException;
 import org.demo.loanservice.dto.CICResponse;
+import org.demo.loanservice.dto.CustomUserDetail;
 import org.demo.loanservice.dto.enumDto.ApplicableObjects;
 import org.demo.loanservice.dto.enumDto.DocumentType;
 import org.demo.loanservice.dto.enumDto.LoanCategory;
@@ -49,7 +54,11 @@ import org.springframework.web.multipart.MultipartFile;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.sql.Date;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -67,15 +76,17 @@ public class FinancialInfoServiceImpl implements IFinancialInfoService {
     private final Logger log = LogManager.getLogger(FinancialInfoServiceImpl.class);
     private final INotificationService notificationService;
     private final CICService cicService;
+    private final Util util;
 
     @Override
     @Transactional
     public DataResponseWrapper<Object> saveInfoIndividualCustomer(FinancialInfoRq financialInfoRq, List<MultipartFile> incomeVerificationDocuments, String transactionId) {
+        CustomUserDetail currentUserSession = util.getCurrentUserSession();
         List<FinancialInfo> financialInfoList = financialInfoRepository
                 .findAllByRequestStatusOrRequestStatusAndIsDeletedFalseAndCifCodeAndIsExpiredFalse(
                         RequestStatus.APPROVED,
                         RequestStatus.PENDING,
-                        financialInfoRq.getCifCode());
+                        currentUserSession.getCifCode());
         if (!financialInfoList.isEmpty()) {
             log.info(MessageData.MESSAGE_LOG, MessageData.FINANCIAL_INFO_IS_REGISTERED.getMessageLog(), transactionId);
             throw new DataNotValidException(MessageData.FINANCIAL_INFO_IS_REGISTERED);
@@ -84,7 +95,7 @@ public class FinancialInfoServiceImpl implements IFinancialInfoService {
         // Fetch customer information by CIF code
         try {
             //Validate customer information
-            customerInfo = customerDubboService.getCustomerByCifCode(financialInfoRq.getCifCode());
+            customerInfo = customerDubboService.getCustomerByCifCode(currentUserSession.getCifCode());
             if (customerInfo == null) {
                 log.info(MessageData.MESSAGE_LOG, transactionId, MessageData.CUSTOMER_ACCOUNT_NOT_FOUND.getMessageLog());
                 throw new DataNotFoundException(MessageData.CUSTOMER_ACCOUNT_NOT_FOUND);
@@ -97,9 +108,9 @@ public class FinancialInfoServiceImpl implements IFinancialInfoService {
 
 
 //         Check if the banking account is active
-            AccountInfoDTO bankingAccountInfoDTO = accountDubboService.getBankingAccount(financialInfoRq.getCifCode());
+            AccountInfoDTO bankingAccountInfoDTO = accountDubboService.getBankingAccount(currentUserSession.getCifCode());
             if (bankingAccountInfoDTO == null) {
-                log.error("transactionId : {} :: Execute error while get banking account. cif code: {}", transactionId, financialInfoRq.getCifCode());
+                log.error("transactionId : {} :: Execute error while get banking account. cif code: {}", transactionId, currentUserSession.getCifCode());
                 throw new DataNotValidException(MessageData.BANKING_ACCOUNT_NOT_EXITS);
             }
             if (!bankingAccountInfoDTO.getStatusAccount().equals(ObjectStatus.ACTIVE)) {
@@ -133,7 +144,7 @@ public class FinancialInfoServiceImpl implements IFinancialInfoService {
             List<LegalDocuments> legalDocumentsList = new ArrayList<>();
             incomeVerificationDocuments.forEach(multipartFile -> {
                 LegalDocuments legalDocument = new LegalDocuments();
-                legalDocument.setCifCode(financialInfoRq.getCifCode());
+                legalDocument.setCifCode(currentUserSession.getCifCode());
                 legalDocument.setDescription("Financial information document");
                 legalDocument.setIsDeleted(false);
                 legalDocument.setExpirationDate(new Date(DateUtil.getDateOfAfterNMonth(3).getTime())); // Expiry date: 3 months later
@@ -382,11 +393,11 @@ public class FinancialInfoServiceImpl implements IFinancialInfoService {
     @Override
     public DataResponseWrapper<Object> getDetailInfoActiveByCifCode(String cifCode, String transactionId) {
         List<FinancialInfo> listFinancialInfo = financialInfoRepository
-                .findAllByRequestStatusOrRequestStatusAndIsDeletedFalseAndCifCodeAndIsExpiredFalse(RequestStatus.APPROVED,RequestStatus.PENDING,cifCode);
+                .findAllByRequestStatusOrRequestStatusAndIsDeletedFalseAndCifCodeAndIsExpiredFalse(RequestStatus.APPROVED, RequestStatus.PENDING, cifCode);
         CustomerDetailDTO customerDetailDTO = customerDubboService.getCustomerByCifCode(cifCode);
         AccountInfoDTO accountInfoDTO = accountDubboService.getBankingAccount(cifCode);
         return DataResponseWrapper.builder()
-                .data(convertToFinancialDetailRp(accountInfoDTO, customerDetailDTO,listFinancialInfo))
+                .data(convertToFinancialDetailRp(accountInfoDTO, customerDetailDTO, listFinancialInfo))
                 .status(MessageValue.STATUS_CODE_SUCCESSFULLY)
                 .message("")
                 .build();
@@ -418,9 +429,9 @@ public class FinancialInfoServiceImpl implements IFinancialInfoService {
     }
 
     private FinancialDetailRp convertToFinancialDetailRp(
-                                                         AccountInfoDTO bankingAccount,
-                                                         CustomerDetailDTO customerDetailDTO,
-                                                         List<FinancialInfo> financialInfoList) {
+            AccountInfoDTO bankingAccount,
+            CustomerDetailDTO customerDetailDTO,
+            List<FinancialInfo> financialInfoList) {
         FinancialDetailRp financialDetailRp = new FinancialDetailRp();
         financialDetailRp.setCustomerId(customerDetailDTO.getCustomerId());
         financialDetailRp.setCustomerName(customerDetailDTO.getFullName());
@@ -435,7 +446,7 @@ public class FinancialInfoServiceImpl implements IFinancialInfoService {
             financialDetailRp.setApplicableObjects(financialInfo.getApplicableObjects().name());
             if (financialInfo.getRequestStatus().equals(RequestStatus.APPROVED)) {
                 LoanAmountInfoProjection loanAmountInfoProjection = loanDetailInfoRepository.getMaxLoanLimitAndCurrentLoanAmount(customerDetailDTO.getCustomerId()).orElse(null);
-                if(loanAmountInfoProjection!=null) {
+                if (loanAmountInfoProjection != null) {
                     financialDetailRp.setAmountLoanLimit(Util.formatToVND(financialInfo.getLoanAmountMax()));
                     BigDecimal amountMaybeLoanRemain = loanAmountInfoProjection.getLoanAmountMax().subtract(loanAmountInfoProjection.getTotalLoanedAmount());
                     financialDetailRp.setAmountMaybeLoanRemain(Util.formatToVND(amountMaybeLoanRemain));

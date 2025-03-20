@@ -4,7 +4,7 @@ import com.nimbusds.jose.JOSEException;
 import com.system.customer_service.dto.identity.TokenExchangeResponse;
 import com.system.customer_service.dto.request.*;
 import com.system.customer_service.dto.response.IntrospectResponse;
-import com.system.customer_service.enums.TypeOTP;
+import com.system.customer_service.dto.enums.TypeOTP;
 import com.system.customer_service.service.AuthenticationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;

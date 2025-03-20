@@ -3,7 +3,7 @@ package com.system.customer_service.service.impl;
 import com.system.customer_service.dto.request.KycRequest;
 import com.system.customer_service.dto.response.KycResponse;
 import com.system.customer_service.entity.Kyc;
-import com.system.customer_service.enums.KycStatus;
+import com.system.customer_service.dto.enums.KycStatus;
 import com.system.customer_service.exception.AppException;
 import com.system.customer_service.exception.ErrorCode;
 import com.system.customer_service.mapper.KycMapper;

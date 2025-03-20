@@ -12,13 +12,14 @@ import com.system.common_library.service.AccountDubboService;
 import com.system.customer_service.client.CustomerCoreFeignClient;
 import com.system.customer_service.dto.identity.Credential;
 import com.system.customer_service.dto.identity.TokenExchangeParam;
+import com.system.customer_service.dto.identity.TokenExchangeResponse;
 import com.system.customer_service.dto.identity.UserCreationParam;
 import com.system.customer_service.dto.request.CustomerUpdateRequest;
 import com.system.customer_service.dto.request.CustomerWorkflowRequest;
 import com.system.customer_service.dto.request.KycRequest;
 import com.system.customer_service.dto.response.CustomerResponse;
 import com.system.customer_service.entity.Customer;
-import com.system.customer_service.enums.TypeOTP;
+import com.system.customer_service.dto.enums.TypeOTP;
 import com.system.customer_service.exception.AppException;
 import com.system.customer_service.exception.ErrorCode;
 import com.system.customer_service.exception.ErrorNormalizer;
@@ -46,8 +47,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ObjectUtils;
 
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -203,6 +209,7 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
+    @Transactional
     public void createCustomerAndBankAccount(CustomerWorkflowRequest customerWorkflowRequest, Locale locale) {
         log.info("Bắt đầu quy trình tạo khách hàng và tài khoản ngân hàng cho số điện thoại: {}",
                 customerWorkflowRequest.getPhone());
@@ -214,13 +221,41 @@ public class CustomerServiceImpl implements CustomerService {
         createKycRequest(customerResponse, customerWorkflowRequest);
 
         //Tạo core customer
-        createCoreCustomer(customerResponse);
+        Customer customer=createCoreCustomer(customerResponse);
+        updateCustomerInKeyCloak(customer);
 
         //Request tạo account
         createAccountDubbo(customerResponse);
 
         // Tạo mã xác thực và gửi mã qua mail cho khách hàng
         authenticationService.generateVerificationCode(customerResponse.getMail(), TypeOTP.MAIL);
+
+    }
+
+    private void updateCustomerInKeyCloak(Customer customer) {
+        try {
+            TokenExchangeResponse token = identityClient.exchangeToken(TokenExchangeParam.builder()
+                    .grant_type("client_credentials")
+                    .client_id(clientId)
+                    .client_secret(clientSecret)
+                    .scope("openid")
+                    .build());
+            Map<String, Object> dataUpdate = new HashMap<>();
+            Map<String, List<String>> attributes = new HashMap<>();
+            attributes.put("cifCode", Collections.singletonList(customer.getCifCode())); // Lưu vào Attributes
+            dataUpdate.put("email", customer.getMail());
+            dataUpdate.put("firstName", customer.getFirstName());
+            dataUpdate.put("lastName", customer.getLastName());
+
+            dataUpdate.put("attributes", attributes); // Keycloak hỗ trợ "attributes"
+
+            // Gọi API để cập nhật user
+            identityClient.updateUser("Bearer " +token.getAccessToken(), customer.getUserId(), dataUpdate);
+        } catch (FeignException exception)  {
+            throw errorNormalizer.handleKeyCloakException(exception);
+        }
+        // Lấy token từ Client Keycloak
+
 
     }
 
@@ -335,7 +370,7 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Transactional
-    public void createCoreCustomer(CustomerResponse customerResponse) {
+    public Customer createCoreCustomer(CustomerResponse customerResponse) {
         log.info("Bắt đầu tạo core khách hàng.");
 
         CreateCustomerCoreDTO createData = CreateCustomerCoreDTO.builder()
@@ -359,8 +394,8 @@ public class CustomerServiceImpl implements CustomerService {
             var customer = this.customerRepository.findByMail(createData.getEmail())
                     .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
-            customer.setCifCode(resCoreCustomer.getBody().getCifCode());
-            customerRepository.save(customer);
+            customer.setCifCode(Objects.requireNonNull(resCoreCustomer.getBody()).getCifCode());
+             return customerRepository.save(customer);
         } catch (Exception e) {
             log.error("Lỗi khi tạo core khách hàng: {}", e.getMessage());
             // Xóa khách hàng nếu lỗi

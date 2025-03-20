@@ -4,9 +4,11 @@ import lombok.RequiredArgsConstructor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.demo.loanservice.controllers.exception.ServerErrorException;
+import org.demo.loanservice.dto.CustomUserDetail;
 import org.springframework.context.MessageSource;
 import org.springframework.context.NoSuchMessageException;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -76,5 +78,12 @@ public class Util {
         DecimalFormat decimalFormat = new DecimalFormat("#,###".concat(" ").concat(CURRENCY_VN), symbols);
 
         return decimalFormat.format(amount);
+    }
+    public CustomUserDetail getCurrentUserSession(){
+        CustomUserDetail currentUserSession = (CustomUserDetail) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (currentUserSession == null){
+            throw new ServerErrorException();
+        }
+        return currentUserSession;
     }
 }
