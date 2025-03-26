@@ -38,6 +38,7 @@ public class SecurityConfig {
             "/v3/api-docs/**",
             "/*/v3/api-docs",
             "/customer/api/v1/users/create",
+            "/customer/api/v1/auth/*",
             "/customer/api/v1/auth/token"
     };
 

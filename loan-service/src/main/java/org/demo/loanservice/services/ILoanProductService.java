@@ -14,6 +14,7 @@ public interface ILoanProductService extends IBaseService<LoanProductRq> {
     DataResponseWrapper<Object> getAllByActive(Integer pageNumber, Integer pageSize, Boolean isActive, String transactionId);
 
     DataResponseWrapper<Object> getAllLoanProductIsActive(Integer pageNumber, Integer pageSize,  String transactionId);
+    DataResponseWrapper<Object> getAllLoanProductIsActiveAndApplicableObjects(Integer pageNumber, Integer pageSize,String applicableObjects,  String transactionId);
 
     DataResponseWrapper<Object> getLoanProductForUserById(String id, String transactionId);
 

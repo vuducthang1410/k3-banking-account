@@ -349,4 +349,12 @@ public class TransactionController {
         return ResponseEntity.status(HttpStatus.OK).contentType(MediaType.TEXT_PLAIN)
                 .body(messageSource.getMessage(Constant.ROLLBACK_SUCCESS, null, LocaleContextHolder.getLocale()));
     }
+    @GetMapping("/get-transaction-by-cifCode")
+    public ResponseEntity<?> getTransactionByCifCode(@RequestParam(value = "cifCode") String cifCode,
+                                                     @RequestParam(defaultValue = "0") Integer page,
+                                                     @RequestParam(defaultValue = "10") Integer limit
+                                                     ) {
+        return ResponseEntity.status(HttpStatus.CREATED).contentType(MediaType.APPLICATION_JSON)
+                .body(transactionDetailService.getAllByCifCode(limit,page,cifCode));
+    }
 }

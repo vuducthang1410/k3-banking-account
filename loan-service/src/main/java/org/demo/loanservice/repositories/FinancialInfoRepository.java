@@ -30,18 +30,16 @@ public interface FinancialInfoRepository extends JpaRepository<FinancialInfo, St
             """;
 
     String queryStatisticalLoan = """
-            SELECT COALESCE(SUM(CASE WHEN tps.is_paid = FALSE THEN tps.amount_repayment END), 0) AS totalUnpaidRepayment,
-                   COALESCE((SELECT SUM(tli.loan_amount)
-                             FROM tbl_loan_detail_info tli
-                             WHERE tli.is_deleted = FALSE
-                               AND tli.request_status = 'PENDING'), 0)                           AS totalPendingLoanAmount,
-                   COALESCE(SUM(CASE WHEN tps.is_paid = TRUE THEN tps.amount_repayment END), 0)  AS totalPaidRepayment
+            SELECT COALESCE(SUM(IF(tps.is_paid = FALSE, tps.amount_repayment, 0)), 0)            AS totalUnpaidRepayment,
+                   COALESCE(SUM(IF(ldi.is_deleted = FALSE
+                                       AND ldi.loan_status = 'PENDING', ldi.loan_amount, 0)), 0) AS totalPendingLoanAmount,
+                   COALESCE(SUM(IF(tps.is_paid = TRUE, tps.amount_repayment, 0)), 0)             AS totalPaidRepayment
             FROM tbl_loan_detail_info ldi
-                     left JOIN tbl_disbursement_info_history dih ON ldi.id = dih.loan_detail_info_id
-                     JOIN tbl_payment_schedule tps ON ldi.id = tps.loan_info_id
-                     join tbl_financial_info tfi on ldi.financial_info_id = tfi.id
-            where tfi.cif_code= :cifCode
-            and ldi.loan_status='ACTIVE'
+                     LEFT JOIN tbl_payment_schedule tps ON ldi.id = tps.loan_info_id
+                     JOIN tbl_financial_info tfi ON ldi.financial_info_id = tfi.id
+            WHERE tfi.cif_code = :cifCode
+              AND (ldi.loan_status = 'ACTIVE' or ldi.loan_status = 'PENDING')
+              AND (ldi.request_status = 'APPROVED' or ldi.request_status = 'PENDING')
             """;
 
     Page<FinancialInfo> findAllByIsDeletedAndRequestStatus(Boolean isDeleted, RequestStatus isApproved, Pageable pageable);
@@ -62,9 +60,8 @@ public interface FinancialInfoRepository extends JpaRepository<FinancialInfo, St
     @Query(value = queryStatisticalLoan, nativeQuery = true)
     StatisticalLoanProjection getStatisticalLoan(String cifCode);
 
-    List<FinancialInfo> findAllByRequestStatusOrRequestStatusAndIsDeletedFalseAndCifCodeAndIsExpiredFalse(RequestStatus requestStatus,
-                                                                                                          RequestStatus requestStatus2,
+    List<FinancialInfo> findAllByRequestStatusInAndIsDeletedFalseAndCifCodeAndIsExpiredFalse(List<RequestStatus> requestStatusList,
+                                                                                             String cifCode);
 
-                                                                                                          String cifCode);
-    List<FinancialInfo> findAllByIsDeletedFalseAndIsExpiredFalseAndExpiredDateAfterAndRequestStatusOrRequestStatus(Date currentDate, RequestStatus requestStatus, RequestStatus requestStatus2);
+    List<FinancialInfo> findAllByIsDeletedFalseAndIsExpiredFalseAndExpiredDateAfterAndRequestStatusIn(Date currentDate, List<RequestStatus> requestStatusList);
 }

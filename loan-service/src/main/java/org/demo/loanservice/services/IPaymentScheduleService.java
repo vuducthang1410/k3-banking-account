@@ -20,6 +20,8 @@ public interface IPaymentScheduleService {
 
     DataResponseWrapper<Object> getListPaymentScheduleByLoanDetailInfo(String loanInfoId, Integer pageSize, Integer pageNumber, String transactionId);
 
+    List<PaymentSchedule> getListPaymentScheduleDefaultByLoanDetailInfo(String loanInfoId, String transactionId);
+
     List<RepaymentScheduleProjection> getListPaymentScheduleByLoanDetailInfo(String loanInfoId, String transactionId);
 
     PaymentSchedule getFirstPaymentScheduleByDueDateAfterCurrentDate(String loanDetailInfo, Timestamp currentDate);

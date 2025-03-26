@@ -12,8 +12,8 @@ public interface ILoanDetailInfoService{
 
     DataResponseWrapper<Object> cancelLoanRequest(String id, String transactionId);
 
-    //todo:
-    DataResponseWrapper<Object> earlyPaymentLoan(String transactionId, String loanInfoId);
+
+    DataResponseWrapper<Object> settlementLoan(String transactionId, String loanInfoId);
 
     //todo
     DataResponseWrapper<Object> getEarlyPaymentPenaltyFee(String loanInfoId, String transactionId);

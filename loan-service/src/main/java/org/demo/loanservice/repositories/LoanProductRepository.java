@@ -1,5 +1,6 @@
 package org.demo.loanservice.repositories;
 
+import org.demo.loanservice.dto.enumDto.ApplicableObjects;
 import org.demo.loanservice.dto.projection.LoanProductReportProjection;
 import org.demo.loanservice.entities.LoanProduct;
 import org.springframework.data.domain.Page;
@@ -46,6 +47,7 @@ public interface LoanProductRepository extends JpaRepository<LoanProduct, String
     Optional<LoanProduct> findByIdAndIsDeleted(String id, boolean isDeleted);
 
     Page<LoanProduct> findAllByIsDeletedFalseAndIsActive(Boolean isActive, Pageable pageable);
+    Page<LoanProduct> findAllByIsDeletedFalseAndIsActiveTrueAndApplicableObjects(ApplicableObjects applicableObjects, Pageable pageable);
     @Query(value = queryGetLoanInfoReport, nativeQuery = true)
     List<LoanProductReportProjection> getLoanProductReport(String cifCode, LocalDate fromDate, LocalDate toDate);
 }

@@ -19,9 +19,6 @@ import java.util.Date;
 @Table(name = "tbl_loan_penalties")
 @Audited
 public class LoanPenalties extends BaseEntity{
-//    @ManyToOne
-//    @JoinColumn(name = "loan_detail_info_id")
-//    private LoanDetailInfo loanDetailInfo;
     @ManyToOne
     @JoinColumn(name = "payment_schedule_id")
     private PaymentSchedule paymentSchedule;

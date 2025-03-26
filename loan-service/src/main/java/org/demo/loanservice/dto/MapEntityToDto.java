@@ -33,7 +33,7 @@ public class MapEntityToDto {
         BigDecimal amountRemaining = repaymentScheduleProjection.getAmountFinedRemaining()
                 .add(repaymentScheduleProjection.getPaymentInterestRate() == null ? repaymentScheduleProjection.getAmountInterest() : BigDecimal.ZERO)
                 .add(repaymentScheduleProjection.getPaymentScheduleDate() == null ? repaymentScheduleProjection.getAmountRepayment() : BigDecimal.ZERO);
-        paymentScheduleRp.setAmountRemaining(amountRemaining.stripTrailingZeros().toPlainString());
+        paymentScheduleRp.setAmountRemaining(Util.formatToVND(amountRemaining));
         paymentScheduleRp.setIsPaid(amountRemaining.compareTo(BigDecimal.ZERO) == 0);
         return paymentScheduleRp;
     }

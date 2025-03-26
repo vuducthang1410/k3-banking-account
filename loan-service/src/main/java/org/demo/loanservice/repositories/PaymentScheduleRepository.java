@@ -56,4 +56,5 @@ public interface PaymentScheduleRepository extends JpaRepository<PaymentSchedule
     List<PaymentSchedule> findAllByIsDeletedFalseAndLoanDetailInfo_IdAndDueDateAfterOrderByDueDateAsc(String loanDetailInfoId, Timestamp currentDate);
 
     Optional<PaymentSchedule> findFirstByIsDeletedFalseAndLoanDetailInfo_IdAndDueDateAfterOrderByDueDateAsc(String loanDetailInfoId, Timestamp currentDate);
+    List<PaymentSchedule> findAllByIsDeletedFalseAndLoanDetailInfo_Id(String loanDetailInfoId);
 }

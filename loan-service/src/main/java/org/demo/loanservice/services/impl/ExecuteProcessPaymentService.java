@@ -48,7 +48,7 @@ public class ExecuteProcessPaymentService {
                                                  AccountInfoDTO accountLoanInfoDTO,
                                                  TransactionInfoDto transactionInfoDto,
                                                  List<RepaymentHistory> repaymentHistoryList) {
-        TransactionLoanResultDTO transactionLoanResultDTO = processPayment(paymentSchedule, accountBankingDTO, accountLoanInfoDTO, paymentSchedule.getAmountRepayment(), PaymentType.INTEREST.name());
+        TransactionLoanResultDTO transactionLoanResultDTO = processPayment(paymentSchedule, accountBankingDTO, accountLoanInfoDTO, paymentSchedule.getAmountRepayment(), PaymentType.PRINCIPAL.name());
         transactionInfoDto.setBalanceRemaining(transactionLoanResultDTO.getBalanceBankingAccount());
         transactionInfoDto.setTotalPayment(transactionInfoDto.getTotalPayment().add(paymentSchedule.getAmountRepayment()));
         log.debug("Banking balance after payment loan:{}", transactionInfoDto.getBalanceRemaining().stripTrailingZeros().toPlainString());
@@ -73,7 +73,7 @@ public class ExecuteProcessPaymentService {
                 .amount(paymentSchedule.getAmountInterestRate())
                 .build();
         transactionDubboService.createLoanTransaction(loanInterestPaymentTransactionDTO);
-        TransactionLoanResultDTO transactionLoanResultDTO = processPayment(paymentSchedule, accountBankingDTO, accountLoanInfoDTO, paymentSchedule.getAmountInterestRate(), PaymentType.PRINCIPAL.name());
+        TransactionLoanResultDTO transactionLoanResultDTO = processPayment(paymentSchedule, accountBankingDTO, accountLoanInfoDTO, paymentSchedule.getAmountInterestRate(), PaymentType.INTEREST.name());
         transactionInfoDto.setBalanceRemaining(transactionLoanResultDTO.getBalanceBankingAccount());
         transactionInfoDto.setTotalPayment(transactionInfoDto.getTotalPayment().add(paymentSchedule.getAmountInterestRate()));
         log.debug("Banking balance after payment interest:{}", transactionInfoDto.getBalanceRemaining().stripTrailingZeros().toPlainString());

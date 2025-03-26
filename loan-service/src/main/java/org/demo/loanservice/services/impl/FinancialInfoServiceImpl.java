@@ -2,6 +2,7 @@ package org.demo.loanservice.services.impl;
 
 import com.system.common_library.dto.notifcation.rabbitMQ.LoanFinancialReviewSuccessNoti;
 import com.system.common_library.dto.response.account.AccountInfoDTO;
+import com.system.common_library.dto.user.CustomUserDetail;
 import com.system.common_library.dto.user.CustomerDetailDTO;
 import com.system.common_library.enums.ObjectStatus;
 import com.system.common_library.exception.DubboException;
@@ -20,7 +21,6 @@ import org.demo.loanservice.controllers.exception.DataNotFoundException;
 import org.demo.loanservice.controllers.exception.DataNotValidException;
 import org.demo.loanservice.controllers.exception.ServerErrorException;
 import org.demo.loanservice.dto.CICResponse;
-import org.demo.loanservice.dto.CustomUserDetail;
 import org.demo.loanservice.dto.enumDto.ApplicableObjects;
 import org.demo.loanservice.dto.enumDto.DocumentType;
 import org.demo.loanservice.dto.enumDto.LoanCategory;
@@ -82,11 +82,13 @@ public class FinancialInfoServiceImpl implements IFinancialInfoService {
     @Transactional
     public DataResponseWrapper<Object> saveInfoIndividualCustomer(FinancialInfoRq financialInfoRq, List<MultipartFile> incomeVerificationDocuments, String transactionId) {
         CustomUserDetail currentUserSession = util.getCurrentUserSession();
+        String cifCode=currentUserSession.getCifCode();
         List<FinancialInfo> financialInfoList = financialInfoRepository
-                .findAllByRequestStatusOrRequestStatusAndIsDeletedFalseAndCifCodeAndIsExpiredFalse(
-                        RequestStatus.APPROVED,
-                        RequestStatus.PENDING,
-                        currentUserSession.getCifCode());
+                .findAllByRequestStatusInAndIsDeletedFalseAndCifCodeAndIsExpiredFalse(
+                        List.of(
+                                RequestStatus.APPROVED,
+                                RequestStatus.PENDING),
+                        cifCode);
         if (!financialInfoList.isEmpty()) {
             log.info(MessageData.MESSAGE_LOG, MessageData.FINANCIAL_INFO_IS_REGISTERED.getMessageLog(), transactionId);
             throw new DataNotValidException(MessageData.FINANCIAL_INFO_IS_REGISTERED);
@@ -95,7 +97,7 @@ public class FinancialInfoServiceImpl implements IFinancialInfoService {
         // Fetch customer information by CIF code
         try {
             //Validate customer information
-            customerInfo = customerDubboService.getCustomerByCifCode(currentUserSession.getCifCode());
+            customerInfo = customerDubboService.getCustomerByCifCode(cifCode);
             if (customerInfo == null) {
                 log.info(MessageData.MESSAGE_LOG, transactionId, MessageData.CUSTOMER_ACCOUNT_NOT_FOUND.getMessageLog());
                 throw new DataNotFoundException(MessageData.CUSTOMER_ACCOUNT_NOT_FOUND);
@@ -108,9 +110,9 @@ public class FinancialInfoServiceImpl implements IFinancialInfoService {
 
 
 //         Check if the banking account is active
-            AccountInfoDTO bankingAccountInfoDTO = accountDubboService.getBankingAccount(currentUserSession.getCifCode());
+            AccountInfoDTO bankingAccountInfoDTO = accountDubboService.getBankingAccount(cifCode);
             if (bankingAccountInfoDTO == null) {
-                log.error("transactionId : {} :: Execute error while get banking account. cif code: {}", transactionId, currentUserSession.getCifCode());
+                log.error("transactionId : {} :: Execute error while get banking account. cif code: {}", transactionId, cifCode);
                 throw new DataNotValidException(MessageData.BANKING_ACCOUNT_NOT_EXITS);
             }
             if (!bankingAccountInfoDTO.getStatusAccount().equals(ObjectStatus.ACTIVE)) {
@@ -263,25 +265,32 @@ public class FinancialInfoServiceImpl implements IFinancialInfoService {
     public DataResponseWrapper<Object> getStatisticalLoan(String transactionId, String cifCode) {
         log.info("transactionId: {} :: Start fetching statistical loan data for CIF code: {}", transactionId, cifCode);
 
+
         // Retrieve statistical loan data from the repository
         StatisticalLoanProjection projection = financialInfoRepository.getStatisticalLoan(cifCode);
         if (projection == null) {
             log.warn("transactionId: {} :: No statistical loan data found for CIF code: {}", transactionId, cifCode);
             throw new DataNotFoundException(MessageData.SERVER_ERROR);
         }
-
+        FinancialInfo financialInfo = financialInfoRepository.findByCifCodeAndRequestStatusAndExpiredDateAfter(
+                cifCode, RequestStatus.APPROVED, new Date(DateUtil.getCurrentTimeUTC7().getTime())
+        );
         // Extract loan data from projection
         BigDecimal totalUnpaid = projection.getTotalUnpaidRepayment();
         BigDecimal totalPending = projection.getTotalPendingLoanAmount();
         BigDecimal totalPaid = projection.getTotalPaidRepayment();
-
         // Calculate total loan amount
         BigDecimal total = totalUnpaid.add(totalPending).add(totalPaid);
         log.info("transactionId: {} :: Loan statistics - Total Unpaid: {}, Total Pending: {}, Total Paid: {}, Total: {}",
                 transactionId, totalUnpaid, totalPending, totalPaid, total);
+        BigDecimal totalAmountRemain = financialInfo == null ? BigDecimal.ZERO : financialInfo.getLoanAmountMax()
+                .subtract(totalUnpaid)
+                .subtract(totalPending)
+                .subtract(totalPaid);
 
+        BigDecimal totalLoanAmountMax = financialInfo == null ? BigDecimal.ZERO : financialInfo.getLoanAmountMax();
         // Create pie chart data
-        List<PieChartData> chartStatisticalLoanData = createPieChartData(totalUnpaid, totalPaid, totalPending, total);
+        List<PieChartData> chartStatisticalLoanData = createPieChartData(totalUnpaid, totalPaid, totalPending, totalLoanAmountMax, totalAmountRemain);
 
         // Return response
         log.info("transactionId: {} :: Successfully retrieved statistical loan data for CIF code: {}", transactionId, cifCode);
@@ -293,17 +302,15 @@ public class FinancialInfoServiceImpl implements IFinancialInfoService {
     }
 
 
-    private static List<PieChartData> createPieChartData(BigDecimal unpaid, BigDecimal paid, BigDecimal pending, BigDecimal total) {
+    private static List<PieChartData> createPieChartData(BigDecimal unpaid, BigDecimal paid, BigDecimal pending, BigDecimal totalAmountMax, BigDecimal totalAmountRemain) {
         List<PieChartData> chartData = new ArrayList<>();
-
-        if (total.compareTo(BigDecimal.ZERO) > 0) {
-            chartData.add(new PieChartData(LoanCategory.UNPAID_REPAYMENT.getLabel(), unpaid.divide(total, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)), Util.formatToVND(unpaid)));
-            chartData.add(new PieChartData(LoanCategory.PAID_REPAYMENT.getLabel(), paid.divide(total, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)), Util.formatToVND(paid)));
-            chartData.add(new PieChartData(LoanCategory.PENDING_LOAN.getLabel(), pending.divide(total, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)), Util.formatToVND(pending)));
+        if (totalAmountMax.compareTo(BigDecimal.ZERO) > 0) {
+            if(unpaid.compareTo(BigDecimal.ZERO)>0)chartData.add(new PieChartData(LoanCategory.UNPAID_REPAYMENT.getLabel(), unpaid.divide(totalAmountMax, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)), Util.formatToVND(unpaid)));
+            if(paid.compareTo(BigDecimal.ZERO)>0)chartData.add(new PieChartData(LoanCategory.PAID_REPAYMENT.getLabel(), paid.divide(totalAmountMax, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)), Util.formatToVND(paid)));
+            if(pending.compareTo(BigDecimal.ZERO)>0)chartData.add(new PieChartData(LoanCategory.PENDING_LOAN.getLabel(), pending.divide(totalAmountMax, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)), Util.formatToVND(pending)));
+            chartData.add(new PieChartData(LoanCategory.UN_LOAN.getLabel(), totalAmountRemain.divide(totalAmountMax, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)), Util.formatToVND(totalAmountRemain)));
         } else {
-            chartData.add(new PieChartData(LoanCategory.UNPAID_REPAYMENT.getLabel(), BigDecimal.ZERO, Util.formatToVND(unpaid)));
-            chartData.add(new PieChartData(LoanCategory.PAID_REPAYMENT.getLabel(), BigDecimal.ZERO, Util.formatToVND(paid)));
-            chartData.add(new PieChartData(LoanCategory.PENDING_LOAN.getLabel(), BigDecimal.ZERO, Util.formatToVND(pending)));
+            chartData.add(new PieChartData(LoanCategory.UN_LOAN.getLabel(), BigDecimal.ZERO, Util.formatToVND(totalAmountRemain)));
         }
         return chartData;
     }
@@ -393,7 +400,7 @@ public class FinancialInfoServiceImpl implements IFinancialInfoService {
     @Override
     public DataResponseWrapper<Object> getDetailInfoActiveByCifCode(String cifCode, String transactionId) {
         List<FinancialInfo> listFinancialInfo = financialInfoRepository
-                .findAllByRequestStatusOrRequestStatusAndIsDeletedFalseAndCifCodeAndIsExpiredFalse(RequestStatus.APPROVED, RequestStatus.PENDING, cifCode);
+                .findAllByRequestStatusInAndIsDeletedFalseAndCifCodeAndIsExpiredFalse(List.of(RequestStatus.APPROVED, RequestStatus.PENDING), cifCode);
         CustomerDetailDTO customerDetailDTO = customerDubboService.getCustomerByCifCode(cifCode);
         AccountInfoDTO accountInfoDTO = accountDubboService.getBankingAccount(cifCode);
         return DataResponseWrapper.builder()

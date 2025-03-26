@@ -28,6 +28,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.security.InvalidParameterException;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -607,14 +608,37 @@ public class TransactionServiceImpl implements TransactionService {
         // Check transaction
         log.info("Roll back transaction type: {}", rollback.getType());
         log.info("Entering rollback with parameters: rollback = {}", rollback);
-        if (!transactionRepository.existsByReferenceCode(rollback.getReferenceCode())) {
-
-            log.error("Invalid reference code");
-            throw new InvalidParameterException(
-                    messageSource.getMessage(Constant.INVALID_REFERENCE_CODE,
-                            null, LocaleContextHolder.getLocale()));
+        if (rollback.getReferenceCode().contains("|")) {
+            String[] referenceCode = rollback.getReferenceCode().split("\\|");
+            Arrays.stream(referenceCode).forEach(rc->{
+                if (!transactionRepository.existsByReferenceCode(rc)) {
+                    log.error("Invalid reference code");
+                    throw new InvalidParameterException(
+                            messageSource.getMessage(Constant.INVALID_REFERENCE_CODE,
+                                    null, LocaleContextHolder.getLocale()));
+                }
+                try {
+                    rollback.setReferenceCode(rc);
+                    executeRollback(rollback);
+                } catch (GroupValidationException e) {
+                    log.error("Error execute rollback");
+                    throw new InvalidParameterException(
+                            messageSource.getMessage(Constant.INVALID_REFERENCE_CODE,
+                                    null, LocaleContextHolder.getLocale()));
+                }
+            });
+        } else {
+            if (!transactionRepository.existsByReferenceCode(rollback.getReferenceCode())) {
+                log.error("Invalid reference code");
+                throw new InvalidParameterException(
+                        messageSource.getMessage(Constant.INVALID_REFERENCE_CODE,
+                                null, LocaleContextHolder.getLocale()));
+            }
+            executeRollback(rollback);
         }
+    }
 
+    private void executeRollback(CoreTransactionRollbackDTO rollback) throws GroupValidationException {
         switch (rollback.getType()) {
             case EXTERNAL -> {
 

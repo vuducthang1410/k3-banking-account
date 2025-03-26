@@ -93,7 +93,7 @@ public class LoanDetailInfoController {
             @RequestHeader(name = "transactionId") String transactionId,
             @PathVariable(name = "id") String loanInfoId
     ) {
-        return ResponseEntity.ok(loanDetailInfoService.earlyPaymentLoan(transactionId, loanInfoId));
+        return ResponseEntity.ok(loanDetailInfoService.settlementLoan(transactionId, loanInfoId));
     }
 
     @Operation(summary = "Get early payment penalty fee")

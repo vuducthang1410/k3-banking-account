@@ -19,6 +19,7 @@ import org.demo.loanservice.entities.LoanProduct;
 import org.demo.loanservice.repositories.LoanProductRepository;
 import org.demo.loanservice.services.IInterestRateService;
 import org.demo.loanservice.services.ILoanProductService;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -164,9 +165,39 @@ public class LoanProductServiceImpl implements ILoanProductService {
     public DataResponseWrapper<Object> getAllLoanProductIsActive(Integer pageNumber, Integer pageSize, String transactionId) {
         // Create a Pageable object with sorting by createdDate in descending order
         Pageable pageable = PageRequest.of(pageNumber, pageSize, Sort.by("createdDate").descending());
-
         // Retrieve a paginated list of LoanProduct entities that are not deleted
         Page<LoanProduct> loanProductPage = loanProductRepository.findAllByIsDeletedFalseAndIsActive(true, pageable);
+        Map<String, Object> dataResponse = getLoanProductResponseMap(loanProductPage);
+        // Return the wrapped response
+        return DataResponseWrapper.builder()
+                .data(dataResponse)
+                .message("Successfully retrieved loan products")
+                .status(MessageValue.STATUS_CODE_SUCCESSFULLY)
+                .build();
+    }
+
+    @Override
+    public DataResponseWrapper<Object> getAllLoanProductIsActiveAndApplicableObjects(Integer pageNumber, Integer pageSize, String applicableObjects, String transactionId) {
+        // Create a Pageable object with sorting by createdDate in descending order
+        Pageable pageable = PageRequest.of(pageNumber, pageSize, Sort.by("createdDate").descending());
+        log.info("Applicable objects : {}", applicableObjects);
+        // Retrieve a paginated list of LoanProduct entities that are not deleted
+        Page<LoanProduct> loanProductPage;
+        if (applicableObjects.equalsIgnoreCase(Util.ALL)) {
+            loanProductPage = loanProductRepository.findAllByIsDeletedFalseAndIsActive(true, pageable);
+        } else {
+            loanProductPage = loanProductRepository.findAllByIsDeletedFalseAndIsActiveTrueAndApplicableObjects(ApplicableObjects.valueOf(applicableObjects), pageable);
+        }
+        Map<String, Object> dataResponse = getLoanProductResponseMap(loanProductPage);
+        // Return the wrapped response
+        return DataResponseWrapper.builder()
+                .data(dataResponse)
+                .message("Successfully retrieved loan products")
+                .status(MessageValue.STATUS_CODE_SUCCESSFULLY)
+                .build();
+    }
+
+    private @NotNull Map<String, Object> getLoanProductResponseMap(Page<LoanProduct> loanProductPage) {
         List<LoanProduct> loanProductList = loanProductPage.getContent();
         log.info("GetAllLoanProductIsActiveFetched:: LoanProduct list: {} records", loanProductList.size());
 
@@ -187,13 +218,7 @@ public class LoanProductServiceImpl implements ILoanProductService {
         dataResponse.put("loanProductForUserRpList", loanProductRpList);
 
         log.info("Successfully processed {} LoanProductForUserRp records", loanProductRpList.size());
-
-        // Return the wrapped response
-        return DataResponseWrapper.builder()
-                .data(dataResponse)
-                .message("Successfully retrieved loan products")
-                .status(MessageValue.STATUS_CODE_SUCCESSFULLY)
-                .build();
+        return dataResponse;
     }
 
     @Override
@@ -210,9 +235,9 @@ public class LoanProductServiceImpl implements ILoanProductService {
 
     @Override
     public DataResponseWrapper<Object> getLoanProductReport(String cifCode, Date fromDate, Date endDate, String transactionId) {
-        LocalDate from=fromDate==null?null:fromDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-        LocalDate end=endDate==null?null:endDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-        List<LoanProductReportProjection> loanProductReportProjection=loanProductRepository.getLoanProductReport(cifCode,from,end);
+        LocalDate from = fromDate == null ? null : fromDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        LocalDate end = endDate == null ? null : endDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        List<LoanProductReportProjection> loanProductReportProjection = loanProductRepository.getLoanProductReport(cifCode, from, end);
         return null;
     }
 
@@ -223,6 +248,7 @@ public class LoanProductServiceImpl implements ILoanProductService {
         loanProductForUserRp.setMaxLoanTerm(loanProduct.getTermLimit());
         loanProductForUserRp.setMaxLoanAmount(Util.formatToVND(loanProduct.getLoanLimit()));
         loanProductForUserRp.setUrlImage(loanProduct.getProductUrlImage());
+        loanProductForUserRp.setApplicableObject(loanProduct.getApplicableObjects().name());
         double minInterestRate = interestRateListById.stream().map(InterestRate::getInterestRate).min(Double::compare).orElse(0.0);
         double maxInterestRate = interestRateListById.stream().map(InterestRate::getInterestRate).max(Double::compare).orElse(100.0);
         loanProductForUserRp.setMaxInterestRate(maxInterestRate);
@@ -291,6 +317,7 @@ public class LoanProductServiceImpl implements ILoanProductService {
         loanProductRp.setCreatedDate(DateUtil.format(DateUtil.YYYY_MM_DD_HH_MM_SS, loanProduct.getCreatedDate()));
         return loanProductRp;
     }
+
     private LoanProductReportRp mapObjectToLoanProductReportRp(LoanProductReportProjection loanProductReportProjection) {
         LoanProductReportRp loanProductReportRp = new LoanProductReportRp();
         loanProductReportRp.setLoanProductId(loanProductReportProjection.getId());

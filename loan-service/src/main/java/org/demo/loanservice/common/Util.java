@@ -1,10 +1,10 @@
 package org.demo.loanservice.common;
 
+import com.system.common_library.dto.user.CustomUserDetail;
 import lombok.RequiredArgsConstructor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.demo.loanservice.controllers.exception.ServerErrorException;
-import org.demo.loanservice.dto.CustomUserDetail;
 import org.springframework.context.MessageSource;
 import org.springframework.context.NoSuchMessageException;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -23,6 +23,7 @@ public class Util {
     private final MessageSource messageSource;
     private final Logger logger = LogManager.getLogger(Util.class);
     private static final String CURRENCY_VN = "VND";
+    public static final String ALL="ALL";
 
     /**
      * @param key the message key

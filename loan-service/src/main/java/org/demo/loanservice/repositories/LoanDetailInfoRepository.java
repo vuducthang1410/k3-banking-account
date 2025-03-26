@@ -94,7 +94,7 @@ public interface LoanDetailInfoRepository extends JpaRepository<LoanDetailInfo, 
               AND ldf.request_status = 'APPROVED'
               AND ldf.loan_status = 'ACTIVE'
               and tfi.cif_code= :cifCode
-            ORDER BY dih.loan_date
+            ORDER BY dih.created_date DESC;
             """;
     String queryCountLoanInfoIsActiveByCifCode = """
             SELECT count(*)

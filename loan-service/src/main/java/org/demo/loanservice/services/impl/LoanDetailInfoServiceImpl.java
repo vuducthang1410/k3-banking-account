@@ -10,6 +10,7 @@ import com.system.common_library.dto.transaction.loan.CreateLoanDisbursementTran
 import com.system.common_library.dto.transaction.loan.CreateLoanPaymentTransactionDTO;
 import com.system.common_library.dto.transaction.loan.CreateLoanTransactionDTO;
 import com.system.common_library.dto.transaction.loan.TransactionLoanResultDTO;
+import com.system.common_library.dto.user.CustomUserDetail;
 import com.system.common_library.dto.user.CustomerDetailDTO;
 import com.system.common_library.enums.ObjectStatus;
 import com.system.common_library.exception.DubboException;
@@ -25,7 +26,6 @@ import org.demo.loanservice.controllers.exception.DataNotFoundException;
 import org.demo.loanservice.controllers.exception.DataNotValidException;
 import org.demo.loanservice.controllers.exception.DataNotValidWithConditionException;
 import org.demo.loanservice.controllers.exception.ServerErrorException;
-import org.demo.loanservice.dto.CustomUserDetail;
 import org.demo.loanservice.dto.MapEntityToDto;
 import org.demo.loanservice.dto.TransactionInfo;
 import org.demo.loanservice.dto.enumDto.*;
@@ -42,6 +42,7 @@ import org.demo.loanservice.dto.response.PaymentScheduleRp;
 import org.demo.loanservice.entities.*;
 import org.demo.loanservice.repositories.DisbursementInfoHistoryRepository;
 import org.demo.loanservice.repositories.LoanDetailInfoRepository;
+import org.demo.loanservice.repositories.LoanPenaltiesRepository;
 import org.demo.loanservice.repositories.LoanVerificationDocumentRepository;
 import org.demo.loanservice.services.*;
 import org.jetbrains.annotations.NotNull;
@@ -76,6 +77,7 @@ public class LoanDetailInfoServiceImpl implements ILoanDetailInfoService {
     private final IPaymentScheduleService paymentScheduleService;
     private final ILoanDetailRepaymentScheduleService loanDetailRepaymentScheduleService;
     private final DisbursementInfoHistoryRepository disbursementInfoHistoryRepository;
+    private final LoanPenaltiesRepository loanPenaltiesRepository;
     @DubboReference
     private CustomerDubboService customerDubboService;
     @DubboReference
@@ -88,9 +90,10 @@ public class LoanDetailInfoServiceImpl implements ILoanDetailInfoService {
 
     @Override
     public DataResponseWrapper<Object> registerIndividualCustomerLoan(IndividualCustomerInfoRq individualCustomerInfoRq, String transactionId) {
-        CustomUserDetail currentUserSession=util.getCurrentUserSession();
+        CustomUserDetail currentUserSession = util.getCurrentUserSession();
+        String cifCode = currentUserSession.getCifCode();
         // Retrieve the CIF code of the authenticated customer
-        CustomerDetailDTO customerInfo = customerDubboService.getCustomerByCifCode(currentUserSession.getCifCode());
+        CustomerDetailDTO customerInfo = customerDubboService.getCustomerByCifCode(cifCode);
         // Retrieve financial information for the customer
         FinancialInfo financialInfo = financialInfoService.getFinancialInfoByCustomerId(customerInfo.getCustomerId(), transactionId);
 
@@ -103,21 +106,38 @@ public class LoanDetailInfoServiceImpl implements ILoanDetailInfoService {
         // Retrieve the loan product details
         LoanProduct loanProduct = loanProductService.getLoanProductById(individualCustomerInfoRq.getLoanProductId(), transactionId);
 
+        if (loanProduct.getApplicableObjects().compareTo(financialInfo.getApplicableObjects()) != 0) {
+            log.error(MessageData.MESSAGE_LOG,
+                    transactionId,
+                    String.format(MessageData.MISMATCH_BETWEEN_LOAN_PRODUCT_AND_FINANCIAL_INFO.getMessageLog(),
+                            loanProduct.getApplicableObjects().name(),
+                            financialInfo.getApplicableObjects(),
+                            cifCode
+                    ));
+            throw new DataNotValidException(MessageData.MISMATCH_BETWEEN_LOAN_PRODUCT_AND_FINANCIAL_INFO);
+        }
         // Validate if the requested loan amount does not exceed the product's loan limit
         if (loanProduct.getLoanLimit().compareTo(individualCustomerInfoRq.getLoanAmount()) < 0) {
-            log.info(MessageData.MESSAGE_LOG, transactionId, String.format(MessageData.LOAN_AMOUNT_LARGER_LOAN_LIMIT.getMessageLog(), loanProduct.getLoanLimit().toPlainString()));
+            log.info(MessageData.MESSAGE_LOG,
+                    transactionId,
+                    String.format(MessageData.LOAN_AMOUNT_LARGER_LOAN_LIMIT.getMessageLog(), loanProduct.getLoanLimit().toPlainString()));
             throw new DataNotValidException(MessageData.LOAN_AMOUNT_LARGER_LOAN_LIMIT);
         }
 
         // Validate if the requested loan term does not exceed the product's term limit
         if (loanProduct.getTermLimit().compareTo(individualCustomerInfoRq.getLoanTerm()) < 0) {
-            log.info(MessageData.MESSAGE_LOG, transactionId, String.format(MessageData.LOAN_TERM_LARGER_THAN_LIMIT.getMessageLog(), loanProduct.getTermLimit()));
+            log.info(MessageData.MESSAGE_LOG,
+                    transactionId,
+                    String.format(MessageData.LOAN_TERM_LARGER_THAN_LIMIT.getMessageLog(), loanProduct.getTermLimit()));
             throw new DataNotValidException(MessageData.LOAN_TERM_LARGER_THAN_LIMIT);
         }
 
         Optional<LoanAmountInfoProjection> loanAmountInfoProjectionOptional = loanDetailInfoRepository.getMaxLoanLimitAndCurrentLoanAmount(customerInfo.getCustomerId());
         if (loanAmountInfoProjectionOptional.isEmpty()) {
-            log.info(MessageData.MESSAGE_LOG_NOT_FOUND_DATA, transactionId, "Not found information for loan amount and loan amount limit of customer with ", customerInfo.getCustomerId());
+            log.info(MessageData.MESSAGE_LOG_NOT_FOUND_DATA,
+                    transactionId,
+                    "Not found information for loan amount and loan amount limit of customer with ",
+                    customerInfo.getCustomerId());
             throw new DataNotValidException(MessageData.LOAN_TERM_LARGER_THAN_LIMIT);
         }
         LoanAmountInfoProjection loanAmountInfoProjection = loanAmountInfoProjectionOptional.get();
@@ -133,7 +153,7 @@ public class LoanDetailInfoServiceImpl implements ILoanDetailInfoService {
         }
 
         // Retrieve the applicable interest rate based on the loan amount
-        InterestRate interestRate = interestRateService.getInterestRateByLoanAmount(individualCustomerInfoRq.getLoanAmount(),individualCustomerInfoRq.getLoanTerm(), transactionId);
+        InterestRate interestRate = interestRateService.getInterestRateByLoanAmount(individualCustomerInfoRq.getLoanAmount(), individualCustomerInfoRq.getLoanTerm(), transactionId);
         log.debug("transactionId:{} - Loan amount : {} - loan term {} ",
                 transactionId,
                 individualCustomerInfoRq.getLoanAmount(),
@@ -199,6 +219,7 @@ public class LoanDetailInfoServiceImpl implements ILoanDetailInfoService {
                     .build();
         }
         TransactionInfo transactionInfo = new TransactionInfo();
+        String loanAccountNumber = "";
         try {
             // Retrieve customer banking account information
             AccountInfoDTO bankingAccountDTO = accountDubboService.getBankingAccount(loanDetailInfo.getFinancialInfo().getCifCode());
@@ -214,6 +235,7 @@ public class LoanDetailInfoServiceImpl implements ILoanDetailInfoService {
                 log.error(MessageData.MESSAGE_LOG, transactionId, "Loan account creation failed.");
                 throw new DataNotValidException(MessageData.CREATED_LOAN_ACCOUNT_ERROR);
             }
+            loanAccountNumber = loanAccountInfoDTO.getLoanAccountNumber();
             if (bankingAccountDTO == null || !StringUtils.hasText(bankingAccountDTO.getAccountNumber())) {
                 log.error("transactionId : {} :: Execute error while get banking account. customer id: {}", transactionId, loanDetailInfo.getFinancialInfo().getCustomerId());
                 throw new DataNotValidException(MessageData.BANKING_ACCOUNT_NOT_EXITS);
@@ -261,14 +283,16 @@ public class LoanDetailInfoServiceImpl implements ILoanDetailInfoService {
             loanDisbursementSuccessNoti.setDisbursementDate(DateUtil.convertTimeStampToLocalDate(disbursementInfoHistory.getLoanDate()));
             loanDisbursementSuccessNoti.setBankAccount(bankingAccountDTO.getAccountNumber());
             notificationService.sendNotificationDisbursementSuccess(loanDisbursementSuccessNoti);
-        } catch (DubboException e) {
-            log.info(MessageData.MESSAGE_LOG, transactionId, e.getMessage());
-            throw e;
         } catch (Exception e) {
             log.info(MessageData.MESSAGE_LOG, transactionId, e.getMessage());
+            if (StringUtils.hasText(loanAccountNumber)) {
+                accountDubboService.deleteAccountService(loanAccountNumber);
+            }
             //callback transaction
             if (transactionInfo.getTransactionId() != null && StringUtils.hasText(transactionInfo.getTransactionId()))
                 transactionDubboService.rollbackLoanAccountDisbursement(transactionInfo.getTransactionId());
+            if (e instanceof DubboException)
+                throw (DubboException) e;
             throw new ServerErrorException(transactionId, MessageData.APPROVE_INDIVIDUAL_CUSTOMER_DISBURSEMENT_ERROR.getCode());
 
         }
@@ -282,11 +306,11 @@ public class LoanDetailInfoServiceImpl implements ILoanDetailInfoService {
     private static @NotNull CreateLoanDisbursementTransactionDTO getCreateLoanDisbursementTransactionDTO(LoanAccountInfoDTO loanAccountInfoDTO, LoanDetailInfo loanDetailInfo, AccountInfoDTO bankingAccountDTO) {
         CreateLoanDisbursementTransactionDTO loanDisbursementTransactionDTO = new CreateLoanDisbursementTransactionDTO();
         loanDisbursementTransactionDTO.setLoanAccount(loanAccountInfoDTO.getLoanAccountNumber());
-        loanDisbursementTransactionDTO.setNote("");
+        loanDisbursementTransactionDTO.setNote(PaymentType.DISBURSEMENT.name());
         loanDisbursementTransactionDTO.setAmount(loanDetailInfo.getLoanAmount());
         loanDisbursementTransactionDTO.setCifCode(loanDetailInfo.getFinancialInfo().getCifCode());
         loanDisbursementTransactionDTO.setPaymentAccount(bankingAccountDTO.getAccountNumber());
-        loanDisbursementTransactionDTO.setDescription("");
+        loanDisbursementTransactionDTO.setDescription(TransactionCode.LOAN_DISBURSEMENT.name());
         return loanDisbursementTransactionDTO;
     }
 
@@ -427,14 +451,14 @@ public class LoanDetailInfoServiceImpl implements ILoanDetailInfoService {
     }
 
     @Override
-    public DataResponseWrapper<Object> earlyPaymentLoan(String transactionId, String loanInfoId) {
+    public DataResponseWrapper<Object> settlementLoan(String transactionId, String loanInfoId) {
         LoanDetailInfo loanDetailInfo = loanDetailRepaymentScheduleService.getLoanDetailInfoById(loanInfoId, transactionId);
         DisbursementInfoHistory disbursementInfoHistory = loanDetailInfo.getDisbursementInfoHistory();
         if (disbursementInfoHistory == null || !loanDetailInfo.getRequestStatus().equals(RequestStatus.APPROVED)) {
             //todo: write log and exception
             throw new ServerErrorException();
         }
-        List<TransactionInfo> transactionInfoList = new ArrayList<>();
+        Stack<TransactionInfo> transactionInfoStack = new Stack<>();
         try {
             FinancialInfo financialInfo = loanDetailInfo.getFinancialInfo();
             AccountInfoDTO loanAccountInfoDTO = accountDubboService.getLoanAccountDTO(disbursementInfoHistory.getLoanAccountId());
@@ -448,81 +472,94 @@ public class LoanDetailInfoServiceImpl implements ILoanDetailInfoService {
             List<PaymentSchedule> paymentScheduleListQueryResult = paymentScheduleService.getListPaymentScheduleByDueDateAfterCurrentDate(loanInfoId, currentDate);
             //get current payment period
             PaymentSchedule paymentScheduleCurrent = paymentScheduleListQueryResult.get(0);
+            List<String> paymentScheduleIdList = paymentScheduleService.getListPaymentScheduleDefaultByLoanDetailInfo(loanInfoId, transactionId)
+                    .stream().map(PaymentSchedule::getId).toList();
+            List<LoanPenalties> loanPenaltiesList = loanPenaltiesRepository.findAllByIsPaidFalseAndIsDeletedFalseAndPaymentSchedule_IdIn(paymentScheduleIdList);
+            BigDecimal amountFinedNotYetPaid = loanPenaltiesList.stream().map(LoanPenalties::getFinedAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
             BigDecimal interestCurrentPeriod = getAmountInterestCurrentPeriod(currentDate, paymentScheduleCurrent);
-            BigDecimal amountFined = loanAccountInfoDTO.getCurrentAccountBalance()
+            BigDecimal amountFinedEarlyPayment = loanAccountInfoDTO.getCurrentAccountBalance()
                     .multiply(BigDecimal.valueOf(2))
                     .divide(BigDecimal.valueOf(100), RoundingMode.HALF_UP);
             BigDecimal amountNeedPayment = loanAccountInfoDTO.getCurrentAccountBalance()
-                    .add(amountFined)
-                    .add(interestCurrentPeriod);
+                    .add(amountFinedEarlyPayment)
+                    .add(interestCurrentPeriod)
+                    .add(amountFinedNotYetPaid);
 
             if (bankingAccountInfoDto.getCurrentAccountBalance().compareTo(amountNeedPayment) < 0) {
                 throw new ServerErrorException();
             }
-            //  Create principal loan payment transaction (PRINCIPAL)
-            CreateLoanPaymentTransactionDTO principalTransactionDTO = createLoanPaymentTransactionDTO(
-                    loanAccountInfoDTO, bankingAccountInfoDto, financialInfo, loanAccountInfoDTO.getCurrentAccountBalance());
-
-            // Create interest payment transaction (INTEREST)
-            CreateLoanPaymentTransactionDTO interestTransactionDTO = createLoanPaymentTransactionDTO(
-                    loanAccountInfoDTO, bankingAccountInfoDto, financialInfo, interestCurrentPeriod);
-
-            // Create penalty payment transaction (PENALTY)
-            CreateLoanPaymentTransactionDTO penaltyTransactionDTO = createLoanPaymentTransactionDTO(
-                    loanAccountInfoDTO, bankingAccountInfoDto, financialInfo, amountFined);
-
             // Process early payment interest fee
             log.info("Processing early payment interest fee...");
-            TransactionLoanResultDTO earlyInterestResult = createLoanTransactionDTO(
-                    loanAccountInfoDTO, financialInfo, amountFined, PaymentType.INTEREST.name(), "Adding early payment interest fee");
-            transactionInfoList.add(TransactionInfo.builder()
-                    .transactionId(earlyInterestResult.getTransactionId())
-                    .paymentType(PaymentType.INTEREST)
-                    .build());
+            executePlusAmountInterestAndAmountFinedToLoanAccount(loanAccountInfoDTO, financialInfo, amountFinedEarlyPayment, transactionInfoStack, interestCurrentPeriod);
 
-            // Process early payment penalty fee
-            log.info("Processing early payment penalty fee...");
-            TransactionLoanResultDTO earlyPenaltyResult = createLoanTransactionDTO(
-                    loanAccountInfoDTO, financialInfo, interestCurrentPeriod, PaymentType.PENALTY.name(), "Adding early payment penalty fee");
-            transactionInfoList.add(TransactionInfo.builder()
-                    .transactionId(earlyPenaltyResult.getTransactionId())
-                    .paymentType(PaymentType.PENALTY)
-                    .build());
             List<RepaymentHistory> repaymentHistoryList = new ArrayList<>();
             log.info("Executing loan repayment transactions...");
 
             // Process principal payment
+            //  Create principal loan payment transaction (PRINCIPAL)
+            CreateLoanPaymentTransactionDTO principalTransactionDTO = createLoanPaymentTransactionDTO(
+                    loanAccountInfoDTO, bankingAccountInfoDto, financialInfo, loanAccountInfoDTO.getCurrentAccountBalance(), TransactionCode.LOAN_PAYMENT);
             TransactionLoanResultDTO principalPaymentResult = transactionDubboService.createLoanPaymentTransaction(principalTransactionDTO);
-            transactionInfoList.add(TransactionInfo.builder()
+            transactionInfoStack.add(TransactionInfo.builder()
                     .transactionId(principalPaymentResult.getTransactionId())
                     .paymentType(PaymentType.PRINCIPAL)
                     .build());
 
-            // Process interest payment
-            TransactionLoanResultDTO interestPaymentResult = transactionDubboService.createLoanPaymentTransaction(interestTransactionDTO);
-            transactionInfoList.add(TransactionInfo.builder()
-                    .transactionId(interestPaymentResult.getTransactionId())
-                    .paymentType(PaymentType.INTEREST)
-                    .build());
-            // Process penalty payment
-            TransactionLoanResultDTO penaltyPaymentResult = transactionDubboService.createLoanPaymentTransaction(penaltyTransactionDTO);
-            transactionInfoList.add(TransactionInfo.builder()
+            if (interestCurrentPeriod.compareTo(BigDecimal.ZERO) > 0) {
+                // Process interest payment
+                // Create interest payment transaction (INTEREST)
+                CreateLoanPaymentTransactionDTO interestTransactionDTO = createLoanPaymentTransactionDTO(
+                        loanAccountInfoDTO, bankingAccountInfoDto, financialInfo, interestCurrentPeriod, TransactionCode.LOAN_PAYMENT);
+                TransactionLoanResultDTO interestPaymentResult = transactionDubboService.createLoanPaymentTransaction(interestTransactionDTO);
+                transactionInfoStack.add(TransactionInfo.builder()
+                        .transactionId(interestPaymentResult.getTransactionId())
+                        .paymentType(PaymentType.PRINCIPAL)
+                        .build());
+                // Create repayment history records
+                log.info("Recording repayment history...");
+                RepaymentHistory repaymentHistory = createRepaymentHistory(paymentScheduleCurrent,
+                        interestPaymentResult, PaymentTransactionType.INTEREST_PAYMENT, interestTransactionDTO.getAmount());
+                repaymentHistoryList.add(repaymentHistory);
+            }
+
+            // Process penalty payment amount early payment
+            // Create penalty payment transaction (PENALTY)
+            CreateLoanPaymentTransactionDTO penaltyEarlyPaymentTransactionDTO = createLoanPaymentTransactionDTO(
+                    loanAccountInfoDTO, bankingAccountInfoDto, financialInfo, amountFinedEarlyPayment, TransactionCode.EARLY_REPAYMENT_PENALTY);
+            TransactionLoanResultDTO penaltyPaymentResult = transactionDubboService.createLoanPaymentTransaction(penaltyEarlyPaymentTransactionDTO);
+            transactionInfoStack.add(TransactionInfo.builder()
                     .transactionId(penaltyPaymentResult.getTransactionId())
-                    .paymentType(PaymentType.PENALTY)
+                    .paymentType(PaymentType.PRINCIPAL)
                     .build());
 
-            // Create repayment history records
-            log.info("Recording repayment history...");
-            RepaymentHistory repaymentHistory = createRepaymentHistory(paymentScheduleCurrent,
-                    interestPaymentResult, PaymentTransactionType.INTEREST_PAYMENT, interestTransactionDTO.getAmount());
-            repaymentHistoryList.add(repaymentHistory);
 
-            log.info("Updating loan status to PAID_OFF...");
-            loanDetailInfo.setLoanStatus(LoanStatus.PAID_OFF);
-            disbursementInfoHistory.setLoanDate(DateUtil.getCurrentTimeUTC7());
+            if (amountFinedNotYetPaid.compareTo(BigDecimal.ZERO) > 0) {
+                //process penalty payment amount fined not yet paid
+                // Create penalty payment transaction (PENALTY)
+                CreateLoanPaymentTransactionDTO penaltyNotYetPaidTransactionDTO = createLoanPaymentTransactionDTO(
+                        loanAccountInfoDTO, bankingAccountInfoDto, financialInfo, amountFinedNotYetPaid, TransactionCode.PENALTY_NOT_YET_PAID);
+                TransactionLoanResultDTO penaltyPaymentAmountNotYetPaidResult = transactionDubboService.createLoanPaymentTransaction(penaltyNotYetPaidTransactionDTO);
+                transactionInfoStack.add(TransactionInfo.builder()
+                        .transactionId(penaltyPaymentAmountNotYetPaidResult.getTransactionId())
+                        .paymentType(PaymentType.PRINCIPAL)
+                        .build());
+
+
+                log.info("Recording repayment penalty history...");
+                loanPenaltiesList.forEach(loanPenalties -> {
+                    loanPenalties.setIsPaid(true);
+                    RepaymentHistory repaymentHistoryPenalty = new RepaymentHistory();
+                    repaymentHistoryPenalty.setTransactionId(penaltyPaymentAmountNotYetPaidResult.getTransactionId());
+                    repaymentHistoryPenalty.setNote(loanPenalties.getFinedReason());
+                    repaymentHistoryPenalty.setAmountPayment(loanPenalties.getFinedAmount());
+                    repaymentHistoryPenalty.setPaymentSchedule(loanPenalties.getPaymentSchedule());
+                    repaymentHistoryPenalty.setPaymentType(PaymentTransactionType.OVERDUE_PAYMENT_PENALTY);
+                    repaymentHistoryList.add(repaymentHistoryPenalty);
+                });
+            }
 
             log.info("Saving loan payment details...");
-            createAndSaveInformationPaymentLoan(repaymentHistoryList, paymentScheduleListQueryResult, amountFined,
+            createAndSaveInformationPaymentLoan(repaymentHistoryList, paymentScheduleListQueryResult, amountFinedEarlyPayment,
                     interestCurrentPeriod, principalPaymentResult, penaltyPaymentResult);
 
 
@@ -534,36 +571,69 @@ public class LoanDetailInfoServiceImpl implements ILoanDetailInfoService {
             //check for close loan account
             if (accountInfoDTO.getStatusAccount().compareTo(ObjectStatus.CLOSED) != 0) {
                 //rollback transaction
-                rollBackTransaction(transactionInfoList);
+                rollBackTransaction(transactionInfoStack);
                 throw new ServerErrorException();
             }
+
+            log.info("Updating loan status to PAID_OFF...");
+            loanDetailInfo.setLoanStatus(LoanStatus.PAID_OFF);
+            disbursementInfoHistory.setLoanDate(DateUtil.getCurrentTimeUTC7());
             loanDetailInfoRepository.saveAndFlush(loanDetailInfo);
-            LoanCompletionNoti loanCompletionNoti= new LoanCompletionNoti();
+
+            //create and push notification
+            LoanCompletionNoti loanCompletionNoti = new LoanCompletionNoti();
             loanCompletionNoti.setAmountPaid(amountNeedPayment);
             loanCompletionNoti.setCustomerCIF(financialInfo.getCifCode());
             loanCompletionNoti.setSettlementDate(LocalDate.now());
             loanCompletionNoti.setContractNumber(loanDetailInfo.getId());
             notificationService.sendNotificationLoanComplete(loanCompletionNoti);
+
+            //create data response
             return DataResponseWrapper.builder()
                     .status(MessageValue.STATUS_CODE_SUCCESSFULLY)
                     .message(util.getMessageFromMessageSource(MessageData.PAYMENT_LOAN_SUCCESSFULLY.getKeyMessage()))
                     .build();
         } catch (Exception e) {
             //rollback transaction
-            rollBackTransaction(transactionInfoList);
+            rollBackTransaction(transactionInfoStack);
             throw new ServerErrorException(transactionId, MessageData.RESOURCE_MAPPING_MESSAGE_ERROR.getCode());
         }
     }
 
-    private void rollBackTransaction(List<TransactionInfo> transactionInfoList) {
-        transactionInfoList.forEach(transactionInfo -> {
-            if (transactionInfo.getPaymentType().equals(PaymentType.INTEREST) || transactionInfo.getPaymentType().equals(PaymentType.PENALTY)) {
+    private void executePlusAmountInterestAndAmountFinedToLoanAccount(AccountInfoDTO loanAccountInfoDTO,
+                                                                      FinancialInfo financialInfo,
+                                                                      BigDecimal amountFinedEarlyPayment,
+                                                                      Stack<TransactionInfo> transactionInfoStack,
+                                                                      BigDecimal interestCurrentPeriod) {
+        TransactionLoanResultDTO earlyInterestResult = createLoanTransactionDTO(
+                loanAccountInfoDTO, financialInfo, amountFinedEarlyPayment, PaymentType.INTEREST.name(), TransactionCode.EARLY_PAYMENT_INTEREST.name());
+        transactionInfoStack.add(TransactionInfo.builder()
+                .transactionId(earlyInterestResult.getTransactionId())
+                .paymentType(PaymentType.INTEREST)
+                .build());
+
+        // Process early payment penalty fee
+        log.info("Processing early payment penalty fee...");
+        TransactionLoanResultDTO earlyPenaltyResult = createLoanTransactionDTO(
+                loanAccountInfoDTO, financialInfo, interestCurrentPeriod, PaymentType.PENALTY.name(), TransactionCode.CALCULATE_EARLY_REPAYMENT_PENALTY.name());
+        transactionInfoStack.add(TransactionInfo.builder()
+                .transactionId(earlyPenaltyResult.getTransactionId())
+                .paymentType(PaymentType.PENALTY)
+                .build());
+    }
+
+    private void rollBackTransaction(Stack<TransactionInfo> transactionInfoStack) {
+        while (!transactionInfoStack.isEmpty()) {
+            TransactionInfo transactionInfo = transactionInfoStack.pop();
+            if (transactionInfo.getPaymentType().equals(PaymentType.INTEREST) ||
+                    transactionInfo.getPaymentType().equals(PaymentType.PENALTY)) {
                 transactionDubboService.rollbackLoanTransaction(transactionInfo.getTransactionId());
             } else {
                 transactionDubboService.rollbackLoanPaymentTransaction(transactionInfo.getTransactionId());
             }
-        });
+        }
     }
+
 
     private static @NotNull RepaymentHistory createRepaymentHistory(PaymentSchedule paymentScheduleCurrent,
                                                                     TransactionLoanResultDTO transactionPaymentInterestResultDTO,
@@ -652,10 +722,18 @@ public class LoanDetailInfoServiceImpl implements ILoanDetailInfoService {
                 .divide(BigDecimal.valueOf(100), RoundingMode.HALF_UP);
         log.info("[{}] Calculated early payment penalty fee (2% of balance): {}", transactionId, amountFined);
 
+        List<String> paymentScheduleIdList = paymentScheduleService.getListPaymentScheduleDefaultByLoanDetailInfo(loanInfoId, transactionId)
+                .stream().map(PaymentSchedule::getId).toList();
+        List<LoanPenalties> loanPenaltiesList = loanPenaltiesRepository.findAllByIsPaidFalseAndIsDeletedFalseAndPaymentSchedule_IdIn(paymentScheduleIdList);
+        BigDecimal amountFinedNotYetPaid = loanPenaltiesList.stream()
+                .map(LoanPenalties::getFinedAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         // Calculate the total amount required for early repayment (principal + penalty fee + interest)
         BigDecimal amountNeedPayment = loanAccountInfoDTO.getCurrentAccountBalance()
                 .add(amountFined)
-                .add(interestCurrentPeriod);
+                .add(interestCurrentPeriod)
+                .add(amountFinedNotYetPaid);
         log.info("[{}] Total amount required for early payment: {}", transactionId, amountNeedPayment);
 
         // Prepare response data
@@ -665,7 +743,7 @@ public class LoanDetailInfoServiceImpl implements ILoanDetailInfoService {
         dataResponse.put("interestCurrentPeriod", Util.formatToVND(interestCurrentPeriod)); // Interest for the current period
         dataResponse.put("amountRemainingLoan", Util.formatToVND(loanAccountInfoDTO.getCurrentAccountBalance())); // Remaining loan balance
         dataResponse.put("amountNeedPayment", Util.formatToVND(amountNeedPayment)); // Total amount required for early payment
-
+        dataResponse.put("amountFinedNotYetPaid", Util.formatToVND(amountFinedNotYetPaid));// Total amount penalty not yet paid
         // Return successful response
         log.info("[{}] Successfully processed early payment penalty fee", transactionId);
         return DataResponseWrapper.builder()
@@ -755,14 +833,19 @@ public class LoanDetailInfoServiceImpl implements ILoanDetailInfoService {
         return loanDetailInfoRp;
     }
 
-    private static CreateLoanPaymentTransactionDTO createLoanPaymentTransactionDTO(AccountInfoDTO loanAccountInfoDTO, AccountInfoDTO bankingAccountInfoDto, FinancialInfo financialInfo, BigDecimal amountNeedPayment) {
+    private static CreateLoanPaymentTransactionDTO createLoanPaymentTransactionDTO(AccountInfoDTO loanAccountInfoDTO,
+                                                                                   AccountInfoDTO bankingAccountInfoDto,
+                                                                                   FinancialInfo financialInfo,
+                                                                                   BigDecimal amountNeedPayment,
+                                                                                   TransactionCode transactionCode
+    ) {
         return CreateLoanPaymentTransactionDTO.builder()
                 .loanAccount(loanAccountInfoDTO.getAccountNumber())
                 .paymentAccount(bankingAccountInfoDto.getAccountNumber())
                 .note(DeftRepaymentStatus.EARLY_PAID.name())
                 .cifCode(financialInfo.getCifCode())
                 .isCashPayment(false)
-                .description(DeftRepaymentStatus.EARLY_PAID.name())
+                .description(transactionCode.name())
                 .amount(amountNeedPayment)
                 .build();
     }

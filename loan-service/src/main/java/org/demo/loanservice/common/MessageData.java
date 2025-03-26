@@ -40,6 +40,7 @@ public enum MessageData {
     INTEREST_RATE_TERM_MIN_GREATER_TERM_LIMIT_LOAN_PRODUCT("interest_rate.term_min_greater_term_limit.loan_product", "Minimum term interest rate is greater than term limit in loan product", "30316"),
     INTEREST_RATE_AMOUNT_MIN_GREATER_AMOUNT_LIMIT_LOAN_PRODUCT("interest_rate.amount_min_greater_amount_limit.loan_product", "Minimum amount interest rate is greater than amount limit in loan product", "30317"),
     FINANCIAL_INFO_IS_REGISTERED("financial_info.is_registered", "Financial info is registered", "30318"),
+    MISMATCH_BETWEEN_LOAN_PRODUCT_AND_FINANCIAL_INFO("mismatch.between.loan_product_and_financial_info","Mismatch between loan product applicable object (%s) and financial info applicable object (%s) for customer cifCode {%s}","30319"),
 
     DATA_NOT_FOUND("data.notFound", "Data not found", "40400"),
     INTEREST_RATE_NOT_FOUND("interest_rate.not_found", "Interest rate not found", "40401"),

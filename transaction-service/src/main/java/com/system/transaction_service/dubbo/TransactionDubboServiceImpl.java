@@ -45,6 +45,7 @@ import com.system.transaction_service.repository.TransactionRepository;
 import com.system.transaction_service.service.interfaces.PagingService;
 import com.system.transaction_service.util.Constant;
 import de.huxhorn.sulky.ulid.ULID;
+import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
@@ -52,6 +53,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.dubbo.config.annotation.DubboReference;
 import org.apache.dubbo.config.annotation.DubboService;
+import org.apache.dubbo.rpc.RpcContext;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
@@ -90,6 +93,7 @@ public class TransactionDubboServiceImpl implements TransactionDubboService {
     private final AccountCoreFeignClient accountCoreFeignClient;
 
     private final TransactionCoreFeignClient transactionCoreFeignClient;
+
 
     @Override
     public TransactionExtraDTO getTransactionDetail(String id) throws DubboException {
@@ -1320,46 +1324,69 @@ public class TransactionDubboServiceImpl implements TransactionDubboService {
 
     @Override
     public boolean rollbackLoanPaymentTransaction(String transactionId) throws DubboException {
+        try {
+            // Check transaction validation
+            log.info("Entering rollbackLoanPaymentTransaction with parameters: transactionId = {}", transactionId);
+            Optional<Transaction> transaction = transactionRepository.findById(transactionId);
+            if (transaction.isPresent()) {
 
-        // Check transaction validation
-        log.info("Entering rollbackLoanPaymentTransaction with parameters: transactionId = {}", transactionId);
-        Optional<Transaction> transaction = transactionRepository.findById(transactionId);
-        if (transaction.isPresent()) {
+                log.info("Transaction is exist with transaction id: {}", transactionId);
+            } else {
 
-            log.info("Transaction is exist with transaction id: {}", transactionId);
-        } else {
+                log.error("Invalid transaction id");
+                throw new DubboException("Invalid transaction id");
+            }
 
-            log.error("Invalid transaction id");
-            throw new DubboException("Invalid transaction id");
-        }
+            // Check master account (Core banking)
+            ResponseEntity<AccountExtraCoreDTO> rsMasterAccount = accountCoreFeignClient.getByAccountNumber
+                    (vaultConfig.getAccountNumber());
+            AccountExtraCoreDTO masterAccount = rsMasterAccount.getBody();
+            if (masterAccount == null || !masterAccount.getIsActive()) {
 
-        // Check master account (Core banking)
-        ResponseEntity<AccountExtraCoreDTO> rsMasterAccount = accountCoreFeignClient.getByAccountNumber
-                (vaultConfig.getAccountNumber());
-        AccountExtraCoreDTO masterAccount = rsMasterAccount.getBody();
-        if (masterAccount == null || !masterAccount.getIsActive()) {
+                log.error("Invalid master account");
+                throw new DubboException("Invalid master account");
+            }
+            log.info("Master account information with account({}): {}", vaultConfig.getAccountNumber(), masterAccount);
 
-            log.error("Invalid master account");
-            throw new DubboException("Invalid master account");
-        }
-        log.info("Master account information with account({}): {}", vaultConfig.getAccountNumber(), masterAccount);
+            // Check payment account validation (Account service)
+            AccountInfoDTO paymentAccount = AccountInfoDTO.builder().build();
+            if (transaction.get().getMethod().equals(Method.ONLINE_BANKING)) {
 
-        // Check payment account validation (Account service)
-        AccountInfoDTO paymentAccount = AccountInfoDTO.builder().build();
-        if (transaction.get().getMethod().equals(Method.ONLINE_BANKING)) {
+                try {
 
+                    String paymentAccountNum = transaction.get().getTransactionDetailList()
+                            .stream().filter(t -> t.getDirection().equals(Direction.SEND)
+                                    && !t.getAccount().equals(transaction.get().getSenderAccount())).findFirst()
+                            .orElseThrow().getAccount();
+                    paymentAccount = accountDubboService.getAccountDetail(paymentAccountNum);
+
+                    if (paymentAccount == null || !paymentAccount.getStatusAccount().equals(ObjectStatus.ACTIVE))
+                        throw new Exception();
+
+                    log.info("Payment account information with account number({}): {}", paymentAccountNum, paymentAccount);
+                } catch (Exception e) {
+
+                    if (e instanceof DubboException) {
+
+                        log.error(e.getMessage());
+                    }
+
+                    log.error("Invalid payment account");
+                    throw new DubboException("Invalid payment account");
+                }
+            }
+
+            // Check loan account validation (Account service)
+            AccountInfoDTO loanAccount;
             try {
 
-                String paymentAccountNum = transaction.get().getTransactionDetailList()
-                        .stream().filter(t -> t.getDirection().equals(Direction.SEND)
-                                && !t.getAccount().equals(transaction.get().getSenderAccount())).findFirst()
-                        .orElseThrow().getAccount();
-                paymentAccount = accountDubboService.getAccountDetail(paymentAccountNum);
+                loanAccount = accountDubboService.getAccountDetail(transaction.get().getSenderAccount());
 
-                if (paymentAccount == null || !paymentAccount.getStatusAccount().equals(ObjectStatus.ACTIVE))
+                if (loanAccount == null || !loanAccount.getStatusAccount().equals(ObjectStatus.ACTIVE))
                     throw new Exception();
 
-                log.info("Payment account information with account number({}): {}", paymentAccountNum, paymentAccount);
+                log.info("Loan account information with account number({}): {}",
+                        transaction.get().getSenderAccount(), loanAccount);
             } catch (Exception e) {
 
                 if (e instanceof DubboException) {
@@ -1367,215 +1394,195 @@ public class TransactionDubboServiceImpl implements TransactionDubboService {
                     log.error(e.getMessage());
                 }
 
-                log.error("Invalid payment account");
-                throw new DubboException("Invalid payment account");
-            }
-        }
-
-        // Check loan account validation (Account service)
-        AccountInfoDTO loanAccount;
-        try {
-
-            loanAccount = accountDubboService.getAccountDetail(transaction.get().getSenderAccount());
-
-            if (loanAccount == null || !loanAccount.getStatusAccount().equals(ObjectStatus.ACTIVE))
-                throw new Exception();
-
-            log.info("Loan account information with account number({}): {}",
-                    transaction.get().getSenderAccount(), loanAccount);
-        } catch (Exception e) {
-
-            if (e instanceof DubboException) {
-
-                log.error(e.getMessage());
+                log.error("Invalid loan account");
+                throw new DubboException("Invalid loan account");
             }
 
-            log.error("Invalid loan account");
-            throw new DubboException("Invalid loan account");
-        }
+            log.info("Transaction amount");
+            BigDecimal amount = transaction.get().getAmount();
+            log.info("Amount: {}", amount);
+            BigDecimal loanBalance = loanAccount.getCurrentAccountBalance();
+            log.info("Loan balance: {}", loanBalance);
+            log.info("Current loan balance: {}", loanBalance.add(amount));
+            BigDecimal paymentBalance = paymentAccount.getCurrentAccountBalance();
+            if (transaction.get().getMethod().equals(Method.ONLINE_BANKING)) {
 
-        log.info("Transaction amount");
-        BigDecimal amount = transaction.get().getAmount();
-        log.info("Amount: {}", amount);
-        BigDecimal loanBalance = loanAccount.getCurrentAccountBalance();
-        log.info("Loan balance: {}", loanBalance);
-        log.info("Current loan balance: {}", loanBalance.add(amount));
-        BigDecimal paymentBalance = paymentAccount.getCurrentAccountBalance();
-        if (transaction.get().getMethod().equals(Method.ONLINE_BANKING)) {
+                log.info("Payment balance: {}", paymentBalance);
+                log.info("Current payment balance: {}", paymentBalance.add(amount));
+            }
 
-            log.info("Payment balance: {}", paymentBalance);
-            log.info("Current payment balance: {}", paymentBalance.add(amount));
-        }
+            // Create transaction
+            InternalTransaction rollback = InternalTransaction.builder()
+                    .id(new ULID().nextULID())
+                    .type(Type.TRANSFER)
+                    .cifCode(transaction.get().getCifCode())
+                    // Master account (sender) information
+                    .senderAccountId(masterAccount.getAccountId())
+                    .senderAccount(masterAccount.getAccountNumber())
+                    .senderAccountType(masterAccount.getAccountType())
+                    // Loan account (receiver) information
+                    .receiverAccountId(loanAccount.getAccountId())
+                    .receiverAccount(loanAccount.getAccountNumber())
+                    .receiverAccountType(loanAccount.getAccountType())
+                    // Transaction information
+                    .amount(amount)
+                    .initiator(Initiator.CUSTOMER)
+                    .transactionType(TransactionType.ROLLBACK)
+                    .method(Method.ONLINE_BANKING)
+                    .referenceCode(transactionId)
+                    .note(ROLLBACK_MESSAGE + transactionId)
+                    .description(ROLLBACK_MESSAGE + transactionId)
+                    .feePayer(FeePayer.SENDER)
+                    .fee(BigDecimal.ZERO)
+                    .status(true)
+                    .build();
+            System.out.println(accountCoreFeignClient.getClass());
+            System.out.println(accountDubboService.getClass());
+            // Create transaction detail list
+            List<TransactionDetail> details = new ArrayList<>();
+            details.add(TransactionDetail.builder()
+                    .id(new ULID().nextULID())
+                    .transaction(rollback)
+                    .customerId(loanAccount.getCustomerId())
+                    .account(loanAccount.getAccountNumber())
+                    .amount(amount)
+                    .fee(BigDecimal.ZERO)
+                    .netAmount(amount)
+                    .previousBalance(loanBalance)
+                    .currentBalance(loanBalance.add(amount))
+                    .availableBalance(loanBalance.add(amount))
+                    .direction(Direction.SEND)
+                    .description(ROLLBACK_MESSAGE + transaction.get()
+                            .getTransactionDetailList().stream()
+                            .filter(e -> e.getAccount().equals(loanAccount.getAccountNumber()))
+                            .findFirst().orElse(new TransactionDetail()).getId())
+                    .status(true)
+                    .build());
 
-        // Create transaction
-        InternalTransaction rollback = InternalTransaction.builder()
-                .id(new ULID().nextULID())
-                .type(Type.TRANSFER)
-                .cifCode(transaction.get().getCifCode())
-                // Master account (sender) information
-                .senderAccountId(masterAccount.getAccountId())
-                .senderAccount(masterAccount.getAccountNumber())
-                .senderAccountType(masterAccount.getAccountType())
-                // Loan account (receiver) information
-                .receiverAccountId(loanAccount.getAccountId())
-                .receiverAccount(loanAccount.getAccountNumber())
-                .receiverAccountType(loanAccount.getAccountType())
-                // Transaction information
-                .amount(amount)
-                .initiator(Initiator.CUSTOMER)
-                .transactionType(TransactionType.ROLLBACK)
-                .method(Method.ONLINE_BANKING)
-                .referenceCode(transactionId)
-                .note(ROLLBACK_MESSAGE + transactionId)
-                .description(ROLLBACK_MESSAGE + transactionId)
-                .feePayer(FeePayer.SENDER)
-                .fee(BigDecimal.ZERO)
-                .status(true)
-                .build();
-
-        // Create transaction detail list
-        List<TransactionDetail> details = new ArrayList<>(List.of(
-                // Loan transaction
-                TransactionDetail.builder()
-                        .id(new ULID().nextULID())
-                        .transaction(rollback)
-                        .customerId(loanAccount.getCustomerId())
-                        .account(loanAccount.getAccountNumber())
-                        .amount(amount)
-                        .fee(BigDecimal.ZERO)
-                        .netAmount(amount)
-                        .previousBalance(loanBalance)
-                        .currentBalance(loanBalance.add(amount))
-                        .availableBalance(loanBalance.add(amount))
-                        .direction(Direction.SEND)
-                        .description(ROLLBACK_MESSAGE + transaction.get()
-                                .getTransactionDetailList().stream()
-                                .filter(e -> e.getAccount().equals(loanAccount.getAccountNumber()))
-                                .findFirst().orElse(new TransactionDetail()).getId())
-                        .status(true)
-                        .build(),
-                // Master transaction
-                TransactionDetail.builder()
-                        .id(new ULID().nextULID())
-                        .transaction(rollback)
-                        .customerId(masterAccount.getCustomerId())
-                        .account(masterAccount.getAccountNumber())
-                        .amount(amount.negate())
-                        .fee(BigDecimal.ZERO)
-                        .netAmount(amount.negate())
-                        .previousBalance(masterAccount.getBalance())
-                        .currentBalance(masterAccount.getBalance().add(amount.negate()))
-                        .availableBalance(masterAccount.getAvailableBalance().add(amount.negate()))
-                        .direction(Direction.RECEIVE)
-                        .description(ROLLBACK_MESSAGE + transaction.get()
-                                .getTransactionDetailList().stream()
-                                .filter(e -> e.getAccount().equals(masterAccount.getAccountNumber()))
-                                .findFirst().orElse(new TransactionDetail()).getId())
-                        .status(true)
-                        .build()
-        ));
-
-        if (transaction.get().getMethod().equals(Method.ONLINE_BANKING)) {
-
-            AccountInfoDTO finalPaymentAccount = paymentAccount;
-            details.add(
-                    // Payment transaction
-                    TransactionDetail.builder()
-                            .id(new ULID().nextULID())
-                            .transaction(rollback)
-                            .customerId(paymentAccount.getCustomerId())
-                            .account(paymentAccount.getAccountNumber())
-                            .amount(amount)
-                            .fee(BigDecimal.ZERO)
-                            .netAmount(amount)
-                            .previousBalance(paymentBalance)
-                            .currentBalance(paymentBalance.add(amount))
-                            .availableBalance(paymentBalance.add(amount))
-                            .direction(Direction.SEND)
-                            .description(ROLLBACK_MESSAGE + transaction.get()
-                                    .getTransactionDetailList().stream()
-                                    .filter(e -> e.getAccount().equals(finalPaymentAccount.getAccountNumber()))
-                                    .findFirst().orElse(new TransactionDetail()).getId())
-                            .status(true)
-                            .build());
-        }
-
-        // Set transaction detail list
-        rollback.setTransactionDetailList(details);
-
-        // Create transaction state list
-        rollback.setTransactionStateList(List.of(
-                TransactionState.builder()
-                        .id(new ULID().nextULID())
-                        .transaction(rollback)
-                        .state(State.COMPLETED)
-                        .description(State.COMPLETED.getDescription())
-                        .status(true)
-                        .build()));
-
-        try {
-
-            // Get list reference code
-            String[] refs = transaction.get().getCoreRollbackCode().split("\\|");
-            log.info("List of reference code: {}", Arrays.stream(refs).toList());
+            details.add(TransactionDetail.builder()
+                    .id(new ULID().nextULID())
+                    .transaction(rollback)
+                    .customerId(masterAccount.getCustomerId())
+                    .account(masterAccount.getAccountNumber())
+                    .amount(amount.negate())
+                    .fee(BigDecimal.ZERO)
+                    .netAmount(amount.negate())
+                    .previousBalance(masterAccount.getBalance())
+                    .currentBalance(masterAccount.getBalance().add(amount.negate()))
+                    .availableBalance(masterAccount.getAvailableBalance().add(amount.negate()))
+                    .direction(Direction.RECEIVE)
+                    .description(ROLLBACK_MESSAGE + transaction.get()
+                            .getTransactionDetailList().stream()
+                            .filter(e -> e.getAccount().equals(masterAccount.getAccountNumber()))
+                            .findFirst().orElse(new TransactionDetail()).getId())
+                    .status(true)
+                    .build());
 
             if (transaction.get().getMethod().equals(Method.ONLINE_BANKING)) {
 
-                // Rollback core banking transaction (master/payment account)
-                log.warn("Rollback core transaction (master/payment account) with code: {}", refs[0]);
-                transactionCoreFeignClient.rollback(CoreTransactionRollbackDTO.builder()
-                        .senderAccountNumber(paymentAccount.getAccountNumber())
-                        .senderAmount(amount.negate())
-                        .receiverAccountNumber(masterAccount.getAccountNumber())
-                        .receiverAmount(amount)
-                        .masterAccountNumber(Constant.STRING)
-                        .masterAmount(BigDecimal.ZERO)
-                        .type(TransactionType.INTERNAL)
-                        .referenceCode(refs[0])
-                        .build());
-
-                // Rollback core banking transaction (loan account)
-                log.warn("Rollback core transaction (loan account) with code: {}", refs[1]);
-                transactionCoreFeignClient.rollback(CoreTransactionRollbackDTO.builder()
-                        .customerAccountNumber(loanAccount.getAccountNumber())
-                        .customerAmount(amount.negate())
-                        .masterAccountNumber(Constant.STRING)
-                        .masterAmount(BigDecimal.ZERO)
-                        .type(TransactionType.EXTERNAL)
-                        .referenceCode(refs[1])
-                        .build());
-
-                // Update payment account balance
-                accountDubboService.updateBalance(paymentAccount.getAccountNumber(), amount);
-            } else {
-
-                // Rollback core banking transaction (loan/master account)
-                log.warn("Rollback core transaction (loan/master account) with code: {}", refs[0]);
-                transactionCoreFeignClient.rollback(CoreTransactionRollbackDTO.builder()
-                        .senderAccountNumber(loanAccount.getAccountNumber())
-                        .senderAmount(amount.negate())
-                        .receiverAccountNumber(masterAccount.getAccountNumber())
-                        .receiverAmount(amount)
-                        .masterAccountNumber(Constant.STRING)
-                        .masterAmount(BigDecimal.ZERO)
-                        .type(TransactionType.INTERNAL)
-                        .referenceCode(refs[0])
-                        .build());
+                AccountInfoDTO finalPaymentAccount = paymentAccount;
+                details.add(
+                        // Payment transaction
+                        TransactionDetail.builder()
+                                .id(new ULID().nextULID())
+                                .transaction(rollback)
+                                .customerId(paymentAccount.getCustomerId())
+                                .account(paymentAccount.getAccountNumber())
+                                .amount(amount)
+                                .fee(BigDecimal.ZERO)
+                                .netAmount(amount)
+                                .previousBalance(paymentBalance)
+                                .currentBalance(paymentBalance.add(amount))
+                                .availableBalance(paymentBalance.add(amount))
+                                .direction(Direction.SEND)
+                                .description(ROLLBACK_MESSAGE + transaction.get()
+                                        .getTransactionDetailList().stream()
+                                        .filter(e -> e.getAccount().equals(finalPaymentAccount.getAccountNumber()))
+                                        .findFirst().orElse(new TransactionDetail()).getId())
+                                .status(true)
+                                .build());
             }
 
-            // Update loan account balance
-            accountDubboService.updateBalance(loanAccount.getAccountNumber(), amount);
+            // Set transaction detail list
+            rollback.setTransactionDetailList(details);
 
-            // Save transaction
-            transactionRepository.save(rollback);
+            // Create transaction state list
+            rollback.setTransactionStateList(List.of(
+                    TransactionState.builder()
+                            .id(new ULID().nextULID())
+                            .transaction(rollback)
+                            .state(State.COMPLETED)
+                            .description(State.COMPLETED.getDescription())
+                            .status(true)
+                            .build()));
+
+            try {
+
+                // Get list reference code
+                String[] refs = transaction.get().getCoreRollbackCode().split("\\|");
+                log.info("List of reference code: {}", Arrays.stream(refs).toList());
+
+                if (transaction.get().getMethod().equals(Method.ONLINE_BANKING)) {
+
+                    // Rollback core banking transaction (master/payment account)
+                    log.warn("Rollback core transaction (master/payment account) with code: {}", refs[0]);
+                    transactionCoreFeignClient.rollback(CoreTransactionRollbackDTO.builder()
+                            .senderAccountNumber(paymentAccount.getAccountNumber())
+                            .senderAmount(amount.negate())
+                            .receiverAccountNumber(masterAccount.getAccountNumber())
+                            .receiverAmount(amount)
+                            .masterAccountNumber(Constant.STRING)
+                            .masterAmount(BigDecimal.ZERO)
+                            .type(TransactionType.INTERNAL)
+                            .referenceCode(refs[0])
+                            .build());
+
+                    // Rollback core banking transaction (loan account)
+                    log.warn("Rollback core transaction (loan account) with code: {}", refs[1]);
+                    transactionCoreFeignClient.rollback(CoreTransactionRollbackDTO.builder()
+                            .customerAccountNumber(loanAccount.getAccountNumber())
+                            .customerAmount(amount.negate())
+                            .masterAccountNumber(Constant.STRING)
+                            .masterAmount(BigDecimal.ZERO)
+                            .type(TransactionType.EXTERNAL)
+                            .referenceCode(refs[1])
+                            .build());
+
+                    // Update payment account balance
+                    accountDubboService.updateBalance(paymentAccount.getAccountNumber(), amount);
+                } else {
+
+                    // Rollback core banking transaction (loan/master account)
+                    log.warn("Rollback core transaction (loan/master account) with code: {}", refs[0]);
+                    transactionCoreFeignClient.rollback(CoreTransactionRollbackDTO.builder()
+                            .senderAccountNumber(loanAccount.getAccountNumber())
+                            .senderAmount(amount.negate())
+                            .receiverAccountNumber(masterAccount.getAccountNumber())
+                            .receiverAmount(amount)
+                            .masterAccountNumber(Constant.STRING)
+                            .masterAmount(BigDecimal.ZERO)
+                            .type(TransactionType.INTERNAL)
+                            .referenceCode(refs[0])
+                            .build());
+                }
+
+                // Update loan account balance
+                accountDubboService.updateBalance(loanAccount.getAccountNumber(), amount);
+
+                // Save transaction
+                transactionRepository.save(rollback);
+            } catch (Exception e) {
+
+                log.error(e.getMessage());
+                throw new DubboException("Rollback fail");
+            }
+
+            log.info("Rollback loan payment transaction successful");
+            return true;
         } catch (Exception e) {
-
-            log.error(e.getMessage());
-            throw new DubboException("Rollback fail");
+            System.out.println(e);
+            throw new RuntimeException(e);
         }
-
-        log.info("Rollback loan payment transaction successful");
-        return true;
     }
 
     @Override

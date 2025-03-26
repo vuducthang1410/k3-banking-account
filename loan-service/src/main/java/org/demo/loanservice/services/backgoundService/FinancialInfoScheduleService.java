@@ -20,25 +20,28 @@ import java.util.List;
 @RequiredArgsConstructor
 public class FinancialInfoScheduleService {
     private final FinancialInfoRepository financialInfoRepository;
-    private final Logger log= LogManager.getLogger(FinancialInfoScheduleService.class);
+    private final Logger log = LogManager.getLogger(FinancialInfoScheduleService.class);
     private final RedisService redisService;
+
     @Scheduled(cron = "0 0 0 * * ?")
     private void automaticallySetExpiredForFinancialInfoExpired() {
-        Date currentDate= Date.valueOf(DateUtil.convertTimeStampToLocalDate(DateUtil.getCurrentTimeUTC7()));
-        List<FinancialInfo> financialInfoList=financialInfoRepository
-                .findAllByIsDeletedFalseAndIsExpiredFalseAndExpiredDateAfterAndRequestStatusOrRequestStatus(
+        Date currentDate = Date.valueOf(DateUtil.convertTimeStampToLocalDate(DateUtil.getCurrentTimeUTC7()));
+        List<FinancialInfo> financialInfoList = financialInfoRepository
+                .findAllByIsDeletedFalseAndIsExpiredFalseAndExpiredDateAfterAndRequestStatusIn(
                         currentDate,
-                        RequestStatus.APPROVED,
-                        RequestStatus.REJECTED
+                        List.of(
+                                RequestStatus.APPROVED,
+                                RequestStatus.REJECTED
+                        )
                 );
-        log.info("Financial Infos is expired: {}",financialInfoList.size());
+        log.info("Financial Infos is expired: {}", financialInfoList.size());
         financialInfoList.forEach(financialInfo -> {
-           financialInfo.setIsExpired(true);
-           if(financialInfo.getRequestStatus()==RequestStatus.PENDING){
-               financialInfo.setRequestStatus(RequestStatus.EXPIRED);
-           }
-           financialInfoRepository.save(financialInfo);
-           redisService.deleteCacheFinancialInfoDetailById(financialInfo.getId());
+            financialInfo.setIsExpired(true);
+            if (financialInfo.getRequestStatus() == RequestStatus.PENDING) {
+                financialInfo.setRequestStatus(RequestStatus.EXPIRED);
+            }
+            financialInfoRepository.save(financialInfo);
+            redisService.deleteCacheFinancialInfoDetailById(financialInfo.getId());
         });
     }
 }

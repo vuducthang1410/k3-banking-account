@@ -591,6 +591,22 @@ public class AccountDubboServiceImpl implements AccountDubboService {
         }
     }
 
+    @Override
+    public boolean deleteAccountService(String accountNumber) {
+        try {
+            AccountCommons accountCommons=accountCommonService.findByAccountNumber(accountNumber);
+            accountCommonService.delete(accountCommons.getAccountCommonId());
+            return true;
+        } catch (Exception e) {
+            // Neu khong tim thay data => return null
+            if(e instanceof ResourceNotFoundException) {
+                return false;
+            }
+
+            throw new DubboException(e.getMessage());
+        }
+    }
+
 
     /* todo: Get Report data to pass to ReportService
      *   response DTO: AccountReportResponse */

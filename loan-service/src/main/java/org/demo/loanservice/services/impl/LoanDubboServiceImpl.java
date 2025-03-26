@@ -9,7 +9,6 @@ import com.system.common_library.enums.LoanStatus;
 import com.system.common_library.enums.Unit;
 import com.system.common_library.exception.DubboException;
 import com.system.common_library.service.AccountDubboService;
-import com.system.common_library.service.CustomerDubboService;
 import com.system.common_library.service.LoanDubboService;
 import lombok.RequiredArgsConstructor;
 import org.apache.dubbo.config.annotation.DubboReference;
@@ -18,6 +17,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.demo.loanservice.common.DateUtil;
 import org.demo.loanservice.common.MessageData;
+import org.demo.loanservice.common.Util;
 import org.demo.loanservice.dto.enumDto.RequestStatus;
 import org.demo.loanservice.dto.projection.LoanDetailReportProjection;
 import org.demo.loanservice.dto.projection.RepaymentScheduleProjection;
@@ -36,8 +36,6 @@ import java.util.UUID;
 public class LoanDubboServiceImpl implements LoanDubboService {
     private final LoanDetailInfoRepository loanDetailInfoRepository;
     private final IPaymentScheduleService paymentScheduleService;
-    @DubboReference
-    private CustomerDubboService customerDubboService;
     @DubboReference
     private AccountDubboService accountDubboService;
 
@@ -128,7 +126,7 @@ public class LoanDubboServiceImpl implements LoanDubboService {
         BigDecimal amountRemaining = repaymentScheduleProjection.getAmountFinedRemaining()
                 .add(repaymentScheduleProjection.getPaymentInterestRate() == null ? repaymentScheduleProjection.getAmountInterest() : BigDecimal.ZERO)
                 .add(repaymentScheduleProjection.getPaymentScheduleDate() == null ? repaymentScheduleProjection.getAmountRepayment() : BigDecimal.ZERO);
-        paymentScheduleRp.setAmountRemaining(amountRemaining.stripTrailingZeros().toPlainString());
+        paymentScheduleRp.setAmountRemaining(Util.formatToVND(amountRemaining));
         return paymentScheduleRp;
     }
 

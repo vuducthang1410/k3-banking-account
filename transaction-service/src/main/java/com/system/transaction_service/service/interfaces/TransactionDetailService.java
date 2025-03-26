@@ -3,6 +3,7 @@ package com.system.transaction_service.service.interfaces;
 import com.system.common_library.dto.transaction.*;
 import com.system.common_library.enums.*;
 import com.system.transaction_service.dto.response.PagedDTO;
+import com.system.transaction_service.entity.Transaction;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -31,4 +32,6 @@ public interface TransactionDetailService {
     TransactionExtraDTO createSystem(CreateSystemDTO create);
 
     void rollback(String transactionId);
+
+    List<Transaction> getAllByCifCode(Integer limit, Integer page, String cifCode);
 }

@@ -35,7 +35,9 @@ import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -1546,6 +1548,13 @@ public class TransactionDetailServiceImpl implements TransactionDetailService {
             throw new InvalidParameterException(e instanceof InvalidParameterException ? e.getMessage() :
                     messageSource.getMessage(Constant.ROLLBACK_FAIL, null, LocaleContextHolder.getLocale()));
         }
+    }
+
+    @Override
+    public List<Transaction> getAllByCifCode(Integer limit, Integer page, String cifCode) {
+        Pageable pageable= PageRequest.of(page,limit, Sort.by("dateCreated"));
+        Page<Transaction>transactionPage=transactionRepository.findByCifCode(cifCode,pageable);
+        return transactionPage.getContent();
     }
 
     private void rollbackExternal(ExternalTransaction externalTransaction) {

@@ -36,7 +36,7 @@ public interface AccountDubboService {
     AccountBalanceDTO updateBalance(String account, BigDecimal amount);
     AccountInfoDTO updateAccountInfo(String account, UpdateAccountDTO data);
     AccountInfoDTO updateAccountStatus(String accountNumber, ObjectStatus status);
-
+    boolean deleteAccountService(String accountNumber);
     //gRPC for reporting
     AccountReportResponse getReportAccount(String account,AccountType type) throws DubboException;
     List<AccountReportResponse> getReportAccounts(AccountReportRequest request) throws DubboException;

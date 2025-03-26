@@ -16,5 +16,6 @@ public class LoanProductForUserRp {
     private double minInterestRate;
     private double maxInterestRate;
     private String maxLoanAmount;
+    private String applicableObject;
     private int maxLoanTerm;
 }

@@ -1,6 +1,5 @@
 package org.demo.loanservice.services.impl;
 
-
 import com.system.common_library.dto.notifcation.rabbitMQ.LoanCompletionNoti;
 import com.system.common_library.dto.response.account.AccountInfoDTO;
 import com.system.common_library.dto.transaction.loan.TransactionLoanResultDTO;
@@ -81,34 +80,55 @@ public class PaymentScheduleServiceImpl implements IPaymentScheduleService {
             loan amount repayment every term = loan amount / loan term
          */
         BigDecimal amountRepaymentEveryTerm = loanDetailInfo.getLoanAmount()
-                .divide(new BigDecimal(loanDetailInfo.getLoanTerm()), RoundingMode.HALF_UP);
+                .divide(new BigDecimal(loanDetailInfo.getLoanTerm()), RoundingMode.HALF_UP)
+                .setScale(0, RoundingMode.HALF_UP);
         log.debug("amount repayment every term : {}", amountRepaymentEveryTerm.stripTrailingZeros().toPlainString());
+        if (loanDetailInfo.getLoanTerm() == 1) {
+            BigDecimal amountInterest = loanDetailInfo.getLoanAmount()
+                    .multiply(BigDecimal.valueOf(loanDetailInfo.getInterestRate()))
+                    .divide(new BigDecimal(100), RoundingMode.HALF_UP)
+                    .setScale(0, RoundingMode.HALF_UP);
+            PaymentSchedule paymentSchedule = createPaymentSchedule(loanDetailInfo, loanDetailInfo.getLoanAmount(), amountInterest, 1);
+            paymentScheduleRepository.saveAndFlush(paymentSchedule);
+            return;
+        }
         if (loanDetailInfo.getFormDeftRepayment().equals(FormDeftRepaymentEnum.PRINCIPAL_AND_INTEREST_MONTHLY)) {
             /*
                 amount interest = loan amount * interest rate/100
              */
-            BigDecimal amountInterest = loanDetailInfo.getLoanAmount().multiply(BigDecimal.valueOf(loanDetailInfo.getInterestRate()))
-                    .divide(new BigDecimal(100), RoundingMode.HALF_UP);
+            BigDecimal amountInterest = loanDetailInfo.getLoanAmount()
+                    .multiply(BigDecimal.valueOf(loanDetailInfo.getInterestRate()))
+                    .divide(new BigDecimal(100), RoundingMode.HALF_UP)
+                    .setScale(0, RoundingMode.HALF_UP);
             log.debug("Calculated interest amount for loan account {}: {}", loanDetailInfo.getDisbursementInfoHistory().getLoanAccountId(), amountInterest.stripTrailingZeros().toPlainString());
-
-            for (int i = 0; i < loanDetailInfo.getLoanTerm(); i++) {
+            for (int i = 0; i < loanDetailInfo.getLoanTerm() - 1; i++) {
                 PaymentSchedule paymentSchedule = createPaymentSchedule(loanDetailInfo, amountRepaymentEveryTerm, amountInterest, i);
                 paymentScheduleList.add(paymentSchedule);
             }
+            BigDecimal amountNeedPaymentRemain = loanDetailInfo.getLoanAmount().subtract(amountRepaymentEveryTerm.multiply(BigDecimal.valueOf(loanDetailInfo.getLoanTerm() - 1)));
+            PaymentSchedule paymentScheduleFinalTerm = createPaymentSchedule(loanDetailInfo, amountNeedPaymentRemain, amountInterest, loanDetailInfo.getLoanTerm());
+            paymentScheduleList.add(paymentScheduleFinalTerm);
         } else if (loanDetailInfo.getFormDeftRepayment().equals(FormDeftRepaymentEnum.PRINCIPAL_INTEREST_DECREASING)) {
-            for (int i = 0; i < loanDetailInfo.getLoanTerm(); i++) {
+            for (int i = 0; i < loanDetailInfo.getLoanTerm() - 1; i++) {
                /*
                    amount interest = remain loan amount * interest rate/100
                 */
                 BigDecimal remainingAmount = amountRepaymentEveryTerm.multiply(new BigDecimal(loanDetailInfo.getLoanTerm() - i));
                 BigDecimal amountInterest = remainingAmount
                         .multiply(BigDecimal.valueOf(loanDetailInfo.getInterestRate()))
-                        .divide(new BigDecimal(100), RoundingMode.HALF_UP);
+                        .divide(new BigDecimal(100), RoundingMode.HALF_UP)
+                        .setScale(0, RoundingMode.HALF_UP);
                 log.debug("Term :{} - remain amount : {} - interest amount: {}", i, remainingAmount.toPlainString(), amountInterest.toPlainString());
-
                 PaymentSchedule paymentSchedule = createPaymentSchedule(loanDetailInfo, amountRepaymentEveryTerm, amountInterest, i);
                 paymentScheduleList.add(paymentSchedule);
             }
+            BigDecimal amountNeedPaymentRemain = loanDetailInfo.getLoanAmount().subtract(amountRepaymentEveryTerm.multiply(BigDecimal.valueOf(loanDetailInfo.getLoanTerm() - 1)));
+            BigDecimal amountInterest = amountNeedPaymentRemain
+                    .multiply(BigDecimal.valueOf(loanDetailInfo.getInterestRate()))
+                    .divide(new BigDecimal(100), RoundingMode.HALF_UP)
+                    .setScale(0, RoundingMode.HALF_UP);
+            PaymentSchedule paymentScheduleFinalTerm = createPaymentSchedule(loanDetailInfo, amountNeedPaymentRemain, amountInterest, loanDetailInfo.getLoanTerm());
+            paymentScheduleList.add(paymentScheduleFinalTerm);
         }
         paymentScheduleRepository.saveAllAndFlush(paymentScheduleList);
     }
@@ -212,12 +232,17 @@ public class PaymentScheduleServiceImpl implements IPaymentScheduleService {
                 .message(util.getMessageFromMessageSource(MessageData.FIND_SUCCESSFULLY.getKeyMessage()))
                 .build();
     }
-
+    @Override
+    public List<PaymentSchedule> getListPaymentScheduleDefaultByLoanDetailInfo(String loanInfoId, String transactionId) {
+        LoanDetailInfo loanDetailInfo = loanDetailRepaymentScheduleService.getLoanDetailInfoById(loanInfoId, transactionId);
+        return paymentScheduleRepository.findAllByIsDeletedFalseAndLoanDetailInfo_Id(loanDetailInfo.getId());
+    }
     @Override
     public List<RepaymentScheduleProjection> getListPaymentScheduleByLoanDetailInfo(String loanInfoId, String transactionId) {
         LoanDetailInfo loanDetailInfo = loanDetailRepaymentScheduleService.getLoanDetailInfoById(loanInfoId, transactionId);
         return paymentScheduleRepository.findPaymentScheduleByLoanDetailInfoId(loanDetailInfo.getId());
     }
+
 
     @Override
     public PaymentSchedule getFirstPaymentScheduleByDueDateAfterCurrentDate(String loanDetailInfo, Timestamp currentDate) {
@@ -306,15 +331,15 @@ public class PaymentScheduleServiceImpl implements IPaymentScheduleService {
                                                     AccountInfoDTO loaAccountInfoDto,
                                                     TransactionLoanResultDTO resultExecuteTransaction,
                                                     String transactionId) {
-        if (resultExecuteTransaction.getBalanceLoanAccount().compareTo(BigDecimal.ONE) < 0) {
+        if (resultExecuteTransaction.getBalanceLoanAccount().compareTo(BigDecimal.ZERO) == 0) {
             String loanDetailInfoId = paymentSchedule.getLoanDetailInfo().getId();
             loanDetailRepaymentScheduleService.updateLoanStatus(loanDetailInfoId, transactionId);
             AccountInfoDTO accountInfoDTO = accountDubboService.updateAccountStatus(loaAccountInfoDto.getAccountNumber(), ObjectStatus.CLOSED);
             if (accountInfoDTO.getStatusAccount().compareTo(ObjectStatus.CLOSED) != 0) {
                 throw new ServerErrorException();
             }
-            FinancialInfo financialInfo=paymentSchedule.getLoanDetailInfo().getFinancialInfo();
-            LoanCompletionNoti loanCompletionNoti= new LoanCompletionNoti();
+            FinancialInfo financialInfo = paymentSchedule.getLoanDetailInfo().getFinancialInfo();
+            LoanCompletionNoti loanCompletionNoti = new LoanCompletionNoti();
             loanCompletionNoti.setAmountPaid(paymentSchedule.getLoanDetailInfo().getLoanAmount());
             loanCompletionNoti.setCustomerCIF(financialInfo.getCifCode());
             loanCompletionNoti.setSettlementDate(LocalDate.now());
@@ -341,7 +366,7 @@ public class PaymentScheduleServiceImpl implements IPaymentScheduleService {
     private PaymentSchedule createPaymentSchedule(LoanDetailInfo loanDetailInfo,
                                                   BigDecimal amountRepaymentEveryTerm,
                                                   BigDecimal amountInterestRate,
-                                                  int index) {
+                                                  int termIndex) {
         PaymentSchedule paymentSchedule = new PaymentSchedule();
         paymentSchedule.setLoanDetailInfo(loanDetailInfo);
         paymentSchedule.setStatus(DeftRepaymentStatus.NOT_DUE);
@@ -350,8 +375,8 @@ public class PaymentScheduleServiceImpl implements IPaymentScheduleService {
         paymentSchedule.setIsPaid(false);
         paymentSchedule.setIsDeleted(false);
         paymentSchedule.setIsPaidInterest(false);
-        paymentSchedule.setDueDate(DateUtil.getDateAfterNMonths(index + 1));
-        paymentSchedule.setName(String.valueOf((index + 1)));
+        paymentSchedule.setDueDate(DateUtil.getDateAfterNMonths(termIndex + 1));
+        paymentSchedule.setName(String.valueOf((termIndex + 1)));
         return paymentSchedule;
     }
 

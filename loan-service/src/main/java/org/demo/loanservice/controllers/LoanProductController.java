@@ -94,6 +94,15 @@ public class LoanProductController {
     ) {
         return ResponseEntity.ok(loanProductService.getAllLoanProductIsActive(pageNum, pageSize, transactionId));
     }
+    @GetMapping("/get-all-loan-product-active-and-applicable-object")
+    public ResponseEntity<DataResponseWrapper<Object>> getAllByActiveAndApplicableObject(
+            @RequestParam(name = "pageSize") Integer pageSize,
+            @RequestParam(name = "pageNum") Integer pageNum,
+            @RequestParam(name = "applicableObject")String applicableObject,
+            @RequestHeader(name = "transactionId") String transactionId
+    ) {
+        return ResponseEntity.ok(loanProductService.getAllLoanProductIsActiveAndApplicableObjects(pageNum, pageSize, applicableObject, transactionId));
+    }
 
     @GetMapping("/loan-product-detail/{id}")
     public ResponseEntity<DataResponseWrapper<Object>> getLoanProductDetail(

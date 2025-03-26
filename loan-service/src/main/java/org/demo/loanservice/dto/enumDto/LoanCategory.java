@@ -8,7 +8,7 @@ import lombok.Getter;
 public enum LoanCategory {
     UNPAID_REPAYMENT("Khoản chưa trả"),
     PAID_REPAYMENT("Khoản đã trả"),
-    PENDING_LOAN("Khoản đang chờ");
-
+    PENDING_LOAN("Khoản đang chờ"),
+    UN_LOAN("Khoản chưa vay");
     private final String label;
 }

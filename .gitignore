@@ -145,3 +145,8 @@ replay_pid*
 
 /log/*
 /logs/*
+/transaction-service/src/main/resources/config/upload-file.json
+/transaction-service/src/main/resources/application.properties
+/customer_service/src/main/resources/application.properties
+/napas-service/src/main/resources/config/upload-file.json
+/reporting-service/src/main/resources/application.properties
