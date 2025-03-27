@@ -259,8 +259,6 @@ public class LoanDetailInfoServiceImpl implements ILoanDetailInfoService {
             loanDetailInfo.setRequestStatus(RequestStatus.valueOf(loanInfoApprovalRq.getRequestStatus()));
             loanDetailInfo.setNote(loanDetailInfo.getNote());
             loanDetailInfo.setLoanStatus(LoanStatus.ACTIVE);
-            if (true)
-                throw new DubboException("");
             //create disbursement info history
             DisbursementInfoHistory disbursementInfoHistory = getDisbursementInfoHistory(loanDetailInfo, loanAccountInfoDTO, transactionResponse);
             disbursementInfoHistoryRepository.saveAndFlush(disbursementInfoHistory);
