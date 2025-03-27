@@ -80,9 +80,9 @@ public class LoanDetailInfoServiceImpl implements ILoanDetailInfoService {
     private final LoanPenaltiesRepository loanPenaltiesRepository;
     @DubboReference
     private CustomerDubboService customerDubboService;
-    @DubboReference
+    @DubboReference(timeout = 5000)
     private TransactionDubboService transactionDubboService;
-    @DubboReference
+    @DubboReference(timeout = 5000)
     private AccountDubboService accountDubboService;
     private final INotificationService notificationService;
     private final Util util;
@@ -252,13 +252,15 @@ public class LoanDetailInfoServiceImpl implements ILoanDetailInfoService {
                 log.error(MessageData.MESSAGE_LOG_DETAIL, transactionId, MessageData.DATA_RESPONSE_TRANSACTION_SERVICE_NOT_VALID.getMessageLog(), "Data response is null");
                 throw new DataNotValidException(MessageData.SERVER_ERROR);
             }
+
             transactionInfo.setTransactionId(transactionResponse.getTransactionId());
             transactionInfo.setPaymentType(PaymentType.DISBURSEMENT);
             //handler response from transaction service
             loanDetailInfo.setRequestStatus(RequestStatus.valueOf(loanInfoApprovalRq.getRequestStatus()));
             loanDetailInfo.setNote(loanDetailInfo.getNote());
             loanDetailInfo.setLoanStatus(LoanStatus.ACTIVE);
-
+            if (true)
+                throw new DubboException("");
             //create disbursement info history
             DisbursementInfoHistory disbursementInfoHistory = getDisbursementInfoHistory(loanDetailInfo, loanAccountInfoDTO, transactionResponse);
             disbursementInfoHistoryRepository.saveAndFlush(disbursementInfoHistory);
@@ -284,13 +286,14 @@ public class LoanDetailInfoServiceImpl implements ILoanDetailInfoService {
             loanDisbursementSuccessNoti.setBankAccount(bankingAccountDTO.getAccountNumber());
             notificationService.sendNotificationDisbursementSuccess(loanDisbursementSuccessNoti);
         } catch (Exception e) {
+
+            //callback transaction
+            if (transactionInfo.getTransactionId() != null && StringUtils.hasText(transactionInfo.getTransactionId()))
+                transactionDubboService.rollbackLoanAccountDisbursement(transactionInfo.getTransactionId());
             log.info(MessageData.MESSAGE_LOG, transactionId, e.getMessage());
             if (StringUtils.hasText(loanAccountNumber)) {
                 accountDubboService.deleteAccountService(loanAccountNumber);
             }
-            //callback transaction
-            if (transactionInfo.getTransactionId() != null && StringUtils.hasText(transactionInfo.getTransactionId()))
-                transactionDubboService.rollbackLoanAccountDisbursement(transactionInfo.getTransactionId());
             if (e instanceof DubboException)
                 throw (DubboException) e;
             throw new ServerErrorException(transactionId, MessageData.APPROVE_INDIVIDUAL_CUSTOMER_DISBURSEMENT_ERROR.getCode());

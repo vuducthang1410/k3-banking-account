@@ -31,11 +31,14 @@ public class AuthenticationFilter extends OncePerRequestFilter {
             List<GrantedAuthority> authorities = Arrays.stream(rolesHeader.split(","))
                     .map(SimpleGrantedAuthority::new)
                     .collect(Collectors.toList());
-            CustomUserDetail userDetails = new CustomUserDetail(customerId, "", authorities,cifCode);
+            CustomUserDetail userDetails = new CustomUserDetail(customerId, "", authorities, cifCode);
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(userDetails, null, authorities);
             SecurityContextHolder.getContext().setAuthentication(authentication);
             filterChain.doFilter(request, response);
+        }else {
+            filterChain.doFilter(request, response);
         }
     }
+
 }
