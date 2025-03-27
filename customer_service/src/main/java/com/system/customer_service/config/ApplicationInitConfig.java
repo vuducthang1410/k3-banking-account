@@ -93,7 +93,6 @@ public class ApplicationInitConfig {
                         new Province("094", "Sóc Trăng"),
                         new Province("095", "Bạc Liêu"),
                         new Province("096", "Cà Mau")
-
                 );
 
                 provinceRepository.saveAll(provinces);

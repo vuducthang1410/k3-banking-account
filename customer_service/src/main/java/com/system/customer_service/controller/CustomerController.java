@@ -7,6 +7,7 @@ import com.system.customer_service.dto.request.CustomerUpdateRequest;
 import com.system.customer_service.dto.request.CustomerWorkflowRequest;
 import com.system.customer_service.dto.response.CustomerResponse;
 import com.system.customer_service.service.CustomerService;
+import com.system.customer_service.service.ProvinceService;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -28,6 +30,7 @@ import java.util.Locale;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class CustomerController {
     CustomerService customerService;
+    private final ProvinceService provinceService;
 
     @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     ResponseEntity<ApiResponse<CustomerResponse>> createCustomer(
@@ -109,6 +112,12 @@ public class CustomerController {
     public ApiResponse<CustomerResponse> changeStatus(@PathVariable String customerId, @RequestParam ObjectStatus status) {
         return ApiResponse.<CustomerResponse>builder()
                 .result(customerService.updateStatus(customerId, status))
+                .build();
+    }
+    @GetMapping("/get-all-province")
+    public ApiResponse<Object> getAllProvince() {
+        return ApiResponse.builder()
+                .result(provinceService.getAllProvince())
                 .build();
     }
 }

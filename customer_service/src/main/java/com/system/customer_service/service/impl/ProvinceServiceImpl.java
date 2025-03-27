@@ -1,5 +1,6 @@
 package com.system.customer_service.service.impl;
 
+import com.system.customer_service.entity.Province;
 import com.system.customer_service.repository.ProvinceRepository;
 import com.system.customer_service.service.ProvinceService;
 import lombok.RequiredArgsConstructor;
@@ -7,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Component
 @Slf4j
@@ -50,6 +52,11 @@ public class ProvinceServiceImpl implements ProvinceService {
 
         log.info("Identity number validation result: {}", isValid);
         return isValid;
+    }
+
+    @Override
+    public List<Province> getAllProvince() {
+        return provinceRepository.findAll();
     }
 
 }
