@@ -32,6 +32,7 @@ public interface InterestRateRepository extends JpaRepository<InterestRate, Stri
             WHERE ir.loanProduct.id IN :loanProductIds 
             AND ir.isActive = true
             AND ir.isDeleted = false
+            ORDER BY ir.interestRate,ir.minimumLoanTerm
             """)
     List<InterestRate> findValidInterestRatesByIsActiveTrue(@Param("loanProductIds") List<String> loanProductIds);
 

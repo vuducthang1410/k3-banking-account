@@ -1,5 +1,6 @@
 package com.system.transaction_service.service;
 
+import com.system.common_library.dto.notifcation.OTP;
 import com.system.common_library.dto.request.transaction.*;
 import com.system.common_library.dto.response.account.AccountExtraCoreDTO;
 import com.system.common_library.dto.response.account.AccountExtraNapasDTO;
@@ -12,20 +13,25 @@ import com.system.common_library.enums.*;
 import com.system.common_library.exception.DubboException;
 import com.system.common_library.service.AccountDubboService;
 import com.system.common_library.service.CustomerDubboService;
+import com.system.common_library.service.NotificationDubboService;
 import com.system.transaction_service.client.core.AccountCoreFeignClient;
 import com.system.transaction_service.client.core.TransactionCoreFeignClient;
 import com.system.transaction_service.client.napas.AccountNapasFeignClient;
 import com.system.transaction_service.client.napas.TransactionNapasFeignClient;
 import com.system.transaction_service.config.VaultConfig;
+import com.system.transaction_service.dto.projection.TransactionHistoryProjection;
 import com.system.transaction_service.dto.request.OTPRequestDTO;
 import com.system.transaction_service.dto.response.PagedDTO;
+import com.system.transaction_service.dto.response.TransactionHistoryRp;
 import com.system.transaction_service.entity.*;
+import com.system.transaction_service.mapper.MapToDto;
 import com.system.transaction_service.mapper.TransactionDetailMapper;
 import com.system.transaction_service.repository.*;
 import com.system.transaction_service.service.interfaces.NotificationService;
 import com.system.transaction_service.service.interfaces.PagingService;
 import com.system.transaction_service.service.interfaces.TransactionDetailService;
 import com.system.transaction_service.util.Constant;
+import com.system.transaction_service.util.OTPGenerator;
 import de.huxhorn.sulky.ulid.ULID;
 import feign.FeignException;
 import jakarta.transaction.Transactional;
@@ -37,7 +43,6 @@ import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -45,9 +50,14 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.security.InvalidParameterException;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.temporal.TemporalUnit;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
@@ -97,6 +107,8 @@ public class TransactionDetailServiceImpl implements TransactionDetailService {
 
     @DubboReference
     private final CustomerDubboService customerDubboService;
+    @DubboReference
+    private NotificationDubboService notificationDubboService;
 
     @Override
     public TransactionExtraDTO findById(String id) {
@@ -715,14 +727,19 @@ public class TransactionDetailServiceImpl implements TransactionDetailService {
 
             // Save transaction
             log.info("Transaction id: {}", transaction.getId());
+            String otp = OTPGenerator.generateOTP(6);
+            transaction.setOtpCode(otp);
+            transaction.setDescription(create.getDescription());
             InternalTransaction internalTransaction = transactionRepository.save(transaction);
-
+            String key = Constant.CACHE_TRANSACTION_PREFIX + "otp:" + internalTransaction.getId();
+            redisTemplate.opsForValue().set(key, internalTransaction.getOtpCode(), Duration.ofSeconds(300));
             // Send OTP code to email (Notification service)
-            notificationService.sendOtpCode(OTPRequestDTO.builder()
-                    .email(create.getEmail())
-                    .transactionId(transaction.getId())
-                    .build());
-
+            notificationDubboService.sendOtpCodeTransaction(
+                    OTP.builder()
+                            .otp(otp)
+                            .expiredTime(LocalDateTime.now().plusSeconds(300))
+                            .build()
+                    , create.getCifCode());
             log.info("Init internal transaction successful");
             return transactionDetailMapper.internalEntityToInit(internalTransaction);
         } catch (Exception e) {
@@ -860,8 +877,8 @@ public class TransactionDetailServiceImpl implements TransactionDetailService {
         InternalTransaction transaction = transactionRepository.save(internalTransaction);
 
         // Update account balance
-//        accountService.updateBalance(internalTransaction.getSenderAccount(), senderNetAmount);
-//        accountService.updateBalance(internalTransaction.getReceiverAccount(), receiverNetAmount);
+        accountDubboService.updateBalance(internalTransaction.getSenderAccount(), senderNetAmount);
+        accountDubboService.updateBalance(internalTransaction.getReceiverAccount(), receiverNetAmount);
 
         try {
 
@@ -1551,10 +1568,18 @@ public class TransactionDetailServiceImpl implements TransactionDetailService {
     }
 
     @Override
-    public List<Transaction> getAllByCifCode(Integer limit, Integer page, String cifCode) {
-        Pageable pageable= PageRequest.of(page,limit, Sort.by("dateCreated"));
-        Page<Transaction>transactionPage=transactionRepository.findByCifCode(cifCode,pageable);
-        return transactionPage.getContent();
+    public Map<String, Object> getAllByCifCode(Integer limit, Integer page, String accountBankingNumber) {
+        Pageable pageable = PageRequest.of(page, limit);
+        Page<TransactionHistoryProjection> transactionPage = transactionRepository.findByBankingAccountNumber(accountBankingNumber, pageable);
+        Map<String, Object> dataResponse = new HashMap<>();
+        dataResponse.put("totalRecord", transactionPage.getTotalElements());
+        dataResponse.put("totalPages", transactionPage.getTotalPages());
+        List<TransactionHistoryRp> transactionHistoryRpList = transactionPage
+                .stream()
+                .map(MapToDto::mapTransactionHistoryRp)
+                .toList();
+        dataResponse.put("content", transactionHistoryRpList);
+        return dataResponse;
     }
 
     private void rollbackExternal(ExternalTransaction externalTransaction) {

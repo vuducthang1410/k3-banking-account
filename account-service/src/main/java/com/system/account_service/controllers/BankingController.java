@@ -1,5 +1,6 @@
 package com.system.account_service.controllers;
 
+import com.system.account_service.dtos.banking.BankAccountInfoRp;
 import com.system.account_service.dtos.banking.BankingRp;
 import com.system.account_service.dtos.response.PageDataDTO;
 import com.system.account_service.services.BankingAccountService;
@@ -73,6 +74,31 @@ public class BankingController {
             WebRequest request
     ) {
         BankingRp data = service.findById(id);
+        HttpStatus status = HttpStatus.OK;
+        String msg = localeUtils.getLocaleMsg(MessageKeys.DATA_GET_SUCCESS, request);
+
+        return ResponseEntity
+                .status(status)
+                .body(webUtils.buildApiResponse(status, msg, data));
+    }
+    @GetMapping("/get-detail/{bankAccountNumber}")
+    @Operation(summary = "Get Banking account by ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Success", content =
+                    {@Content(mediaType = "application/json", schema =
+                    @Schema(implementation = BankingRp.class))}),
+            @ApiResponse(responseCode = "400", description = "Bad Request", content =
+                    {@Content(schema = @Schema(implementation = String.class))}),
+            @ApiResponse(responseCode = "404", description = "Not Found", content =
+                    {@Content(schema = @Schema(implementation = String.class))}),
+            @ApiResponse(responseCode = "500", description = "Internal Server Error", content =
+                    {@Content(schema = @Schema(implementation = String.class))})
+    })
+    public ResponseEntity<?> getInfoByBankAccountNumber(
+            @PathVariable(name = "bankAccountNumber") String bankingAccountNumber,
+            WebRequest request
+    ) {
+        BankAccountInfoRp data = service.getByBankAccountNumber(bankingAccountNumber);
         HttpStatus status = HttpStatus.OK;
         String msg = localeUtils.getLocaleMsg(MessageKeys.DATA_GET_SUCCESS, request);
 

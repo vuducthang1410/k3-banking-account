@@ -16,7 +16,8 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
     private final String[] PUBLIC_ENDPOINTS = {
             "/api/v1/users/register", "/api/v1/users/create", "/api/v1/auth/token", "/api/v1/auth/introspect",
-            "/api/v1/auth/generate-code", "/api/v1/auth/forgot-password"
+            "/api/v1/auth/generate-code", "/api/v1/auth/forgot-password",
+            "/api/v1/auth/*x1x`"
     };
 
     @Bean

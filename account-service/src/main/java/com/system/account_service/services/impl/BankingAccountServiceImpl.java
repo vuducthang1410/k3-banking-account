@@ -1,5 +1,6 @@
 package com.system.account_service.services.impl;
 
+import com.system.account_service.dtos.banking.BankAccountInfoRp;
 import com.system.account_service.dtos.banking.BankingRp;
 import com.system.account_service.dtos.banking.CreateBankingDTO;
 import com.system.account_service.dtos.banking.ReportPaymentByRangeDTO;
@@ -18,10 +19,13 @@ import com.system.account_service.utils.DateTimeUtils;
 import com.system.account_service.utils.MessageKeys;
 import com.system.common_library.dto.report.AccountReportRequest;
 import com.system.common_library.dto.response.account.AccountInfoDTO;
+import com.system.common_library.dto.user.CustomerDetailDTO;
 import com.system.common_library.enums.AccountType;
 import com.system.common_library.enums.ObjectStatus;
+import com.system.common_library.service.CustomerDubboService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -40,7 +44,9 @@ public class BankingAccountServiceImpl implements BankingAccountService {
     private final BranchBankingService branchBankingService;
 
     private final BankingRepository repository;
-
+    private final BankingRepository bankingRepository;
+    @DubboReference
+    private CustomerDubboService customerDubboService;
 
     @Override
     @Transactional
@@ -165,8 +171,20 @@ public class BankingAccountServiceImpl implements BankingAccountService {
         return repository.getReportsByRange(reportByRangeDTO);
     }
 
+    @Override
+    public BankAccountInfoRp getByBankAccountNumber(String bankAccountNumber) {
+        AccountCommons bankingAccount=accountCommonService.findByAccountNumber(bankAccountNumber);
+        BankAccountInfoRp bankAccountInfoRp=new BankAccountInfoRp();
+        bankAccountInfoRp.setAccountId(bankingAccount.getAccountCommonId());
+        bankAccountInfoRp.setAccountNumber(bankingAccount.getAccountNumber());
+        CustomerDetailDTO customerDetailDTO=customerDubboService.getCustomerByCifCode(bankingAccount.getCifCode());
+        bankAccountInfoRp.setAccountName(customerDetailDTO.getFullName());
+        bankAccountInfoRp.setAccountType(bankingAccount.getAccountType().name());
+        return bankAccountInfoRp;
+    }
 
-//    Convert sang model response
+
+    //    Convert sang model response
     private BankingRp convertRp(BankingAccount data) {
         return BankingRp.builder()
                 .id(data.getAccountId())

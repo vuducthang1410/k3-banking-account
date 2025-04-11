@@ -323,7 +323,7 @@ public class CustomerServiceImpl implements CustomerService {
 
             // Lưu customer vào DB
             customer = customerRepository.save(customer);
-
+            authenticationService.generateVerificationCode(customer.getMail(), TypeOTP.MAIL);
             return customerMapper.toCustomerResponse(customer);
         } catch (FeignException exception) {
             throw errorNormalizer.handleKeyCloakException(exception);

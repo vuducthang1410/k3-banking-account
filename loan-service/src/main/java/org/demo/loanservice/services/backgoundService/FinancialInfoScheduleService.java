@@ -8,8 +8,6 @@ import org.demo.loanservice.dto.enumDto.RequestStatus;
 import org.demo.loanservice.entities.FinancialInfo;
 import org.demo.loanservice.repositories.FinancialInfoRepository;
 import org.demo.loanservice.services.impl.RedisService;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 

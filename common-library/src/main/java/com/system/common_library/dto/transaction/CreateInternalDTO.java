@@ -24,9 +24,6 @@ public class CreateInternalDTO implements Serializable {
     @Size(min = 8, max = 11, message = "{" + Constant.CIF_CODE_SIZE + "}")
     private String cifCode;
 
-    @Email(regexp = "^(.+)@(\\S+)$", message = "{" + Constant.INVALID_FORMAT_EMAIL + "}")
-    private String email;
-
     private String senderAccountId;
 
     @NotNull(message = "{" + Constant.SENDER_ACCOUNT_REQUIRE + "}")
@@ -35,21 +32,12 @@ public class CreateInternalDTO implements Serializable {
 
     private AccountType senderAccountType;
 
-    @NotNull(message = "{" + Constant.SENDER_NAME_REQUIRE + "}")
-    @Size(min = 2, max = 255, message = "{" + Constant.SENDER_NAME_SIZE + "}")
-    private String senderAccountName;
-
-    private String receiverAccountId;
-
     @NotNull(message = "{" + Constant.RECEIVER_ACCOUNT_REQUIRE + "}")
     @Size(min = 2, max = 255, message = "{" + Constant.RECEIVER_ACCOUNT_SIZE + "}")
     private String receiverAccount;
 
     private AccountType receiverAccountType;
 
-    @NotNull(message = "{" + Constant.RECEIVER_NAME_REQUIRE + "}")
-    @Size(min = 2, max = 255, message = "{" + Constant.RECEIVER_NAME_SIZE + "}")
-    private String receiverAccountName;
 
     @Range(min = 1, max = 1000000000, message = "{" + Constant.INVALID_AMOUNT + "}")
     private BigDecimal amount;

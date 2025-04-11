@@ -1,19 +1,19 @@
-//package com.example.notification_service.rabbitmq.consumer;
-//
-//import com.example.notification_service.service.interfaces.HandleEventService;
-//import com.system.common_library.dto.notifcation.rabbitMQ.*;
-//import com.system.common_library.dto.user.CustomerDetailDTO;
-//import lombok.RequiredArgsConstructor;
-//import lombok.extern.slf4j.Slf4j;
-//import org.springframework.amqp.rabbit.annotation.RabbitListener;
-//import org.springframework.stereotype.Service;
-//
-//@Slf4j
-//@Service
-//@RequiredArgsConstructor
-//public class RabbitMQConsumer {
-//    private final HandleEventService handleEventService;
-//
+package com.example.notification_service.rabbitmq.consumer;
+
+import com.example.notification_service.service.interfaces.HandleEventService;
+import com.system.common_library.dto.notifcation.rabbitMQ.*;
+import com.system.common_library.dto.user.CustomerDetailDTO;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.stereotype.Service;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class RabbitMQConsumer {
+    private final HandleEventService handleEventService;
+
 //    @RabbitListener(queues = {"${rabbitmq.queue.consumer.customer.welcome}"}, ackMode = "MANUAL")
 //    public boolean sendWelcomeCustomer(CustomerDetailDTO customerDetailDTO) {
 //      log.info("Welcome Customer Queue");
@@ -98,4 +98,4 @@
 //        log.info("Received message -> {}", loanPaymentSuccessNoti.toString());
 //        return handleEventService.sendLoanPaymentSuccess(loanPaymentSuccessNoti);
 //    }
-//}
+}

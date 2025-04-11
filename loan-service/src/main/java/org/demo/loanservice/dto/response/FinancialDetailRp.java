@@ -26,4 +26,7 @@ public class FinancialDetailRp {
     private String applicableObjects;
     private Boolean isExpired;
     private Boolean isRegistered;
+    private String accountId;
+    private String accountType;
+    private String accountTypeDescription;
 }

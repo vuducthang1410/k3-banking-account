@@ -7,6 +7,7 @@ import com.system.transaction_service.entity.Transaction;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 public interface TransactionDetailService {
 
@@ -33,5 +34,5 @@ public interface TransactionDetailService {
 
     void rollback(String transactionId);
 
-    List<Transaction> getAllByCifCode(Integer limit, Integer page, String cifCode);
+    Map<String,Object> getAllByCifCode(Integer limit, Integer page, String cifCode);
 }

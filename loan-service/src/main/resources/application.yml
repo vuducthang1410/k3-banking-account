@@ -11,6 +11,7 @@ dubbo:
   consumer:
     check: false
     lazy: true
+    timeout: 5000
   registry:
     address: zookeeper://${DOCKER_HOST:localhost}:2181
   protocol:
@@ -30,10 +31,24 @@ spring:
     username: ${DB_USERNAME:root}
     url: ${DB_URL:jdbc:mysql://localhost:3306/loan-service}?useSSL=false&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
     password: ${DB_PASSWORD:123456}
+  #  jpa:
+  #    hibernate:
+  ##      ddl-auto: create
+  #              ddl-auto: update
+  #  datasource:
+  #    driver-class-name: org.postgresql.Driver
+  #    url: jdbc:postgresql://aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true
+  #    username: postgres.wxibsezkqqbfflonpjbm
+  #    password: 123xxThang@gmail
+  #  datasource:
+  #    url: jdbc:postgresql://localhost:5432/postgres
+  #    username: postgres.your-tenant-id
+  #    password: your-super-secret-and-long-postgres-password
+  #    driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-#      ddl-auto: create
-          ddl-auto: update
+      ddl-auto: update
+    database-platform: org.hibernate.dialect.MySQL8Dialect
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect

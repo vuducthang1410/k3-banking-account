@@ -1,5 +1,6 @@
 package com.system.account_service.services;
 
+import com.system.account_service.dtos.banking.BankAccountInfoRp;
 import com.system.account_service.dtos.banking.BankingRp;
 import com.system.account_service.dtos.banking.CreateBankingDTO;
 import com.system.account_service.dtos.response.PageDataDTO;
@@ -32,4 +33,6 @@ public interface BankingAccountService {
     BankingAccount getDataId(String id);
 
     List<BankingAccount> getReportsByRange(AccountReportRequest request);
+    BankAccountInfoRp getByBankAccountNumber(String bankAccountNumber);
+
 }

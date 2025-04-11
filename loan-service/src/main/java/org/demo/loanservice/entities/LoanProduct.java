@@ -40,7 +40,9 @@ public class LoanProduct extends BaseEntity {
 
     @Schema(description = "A detailed description of the loan product, including terms and" +
             " features of the loan.")
-    private byte[] description;
+    @Lob
+    @Column(columnDefinition = "LONGTEXT")
+    private String description;
 
     @Schema(description = "The interest rate ID associated with this loan product," +
             " linking to the interest rate table.")
@@ -49,7 +51,9 @@ public class LoanProduct extends BaseEntity {
 
     @Schema(description = "Utility services associated with the loan product, " +
             "which may include insurance, financial planning services, etc.")
-    private byte[] utilities;
+    @Lob
+    @Column(columnDefinition = "LONGTEXT")
+    private String utilities;
 
     @Schema(description = "The URL to an image representing the loan product," +
             " such as a logo or promotional image.")
@@ -57,7 +61,9 @@ public class LoanProduct extends BaseEntity {
 
     @Schema(description = "Loan conditions that borrowers must meet to qualify for" +
             " the loan, such as credit score, income, etc.")
-    private byte[] loanCondition;
+    @Lob
+    @Column(columnDefinition = "LONGTEXT")
+    private String loanCondition;
 
     @Enumerated(EnumType.STRING)
     private ApplicableObjects applicableObjects;

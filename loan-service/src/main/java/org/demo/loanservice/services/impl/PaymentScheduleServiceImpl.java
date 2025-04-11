@@ -10,7 +10,11 @@ import lombok.RequiredArgsConstructor;
 import org.apache.dubbo.config.annotation.DubboReference;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.demo.loanservice.common.*;
+import org.demo.loanservice.common.DataResponseWrapper;
+import org.demo.loanservice.common.DateUtil;
+import org.demo.loanservice.common.MessageData;
+import org.demo.loanservice.common.MessageValue;
+import org.demo.loanservice.common.Util;
 import org.demo.loanservice.controllers.exception.DataNotFoundException;
 import org.demo.loanservice.controllers.exception.DataNotValidException;
 import org.demo.loanservice.controllers.exception.ServerErrorException;
@@ -294,7 +298,7 @@ public class PaymentScheduleServiceImpl implements IPaymentScheduleService {
                     checkLoanAccountBalanceToCloseLoan(paymentSchedule, accountLoanInfoDTO, transactionLoanResultDTO, transactionId);
                 }
             } catch (Exception e) {
-                log.error("Error processing interest payment: {}", e.getMessage(), e);
+                 log.error("Error processing interest payment: {}", e.getMessage(), e);
                 return;
             }
         }

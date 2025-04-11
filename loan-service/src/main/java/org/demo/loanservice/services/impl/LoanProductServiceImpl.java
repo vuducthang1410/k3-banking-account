@@ -3,7 +3,11 @@ package org.demo.loanservice.services.impl;
 import lombok.RequiredArgsConstructor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.demo.loanservice.common.*;
+import org.demo.loanservice.common.DataResponseWrapper;
+import org.demo.loanservice.common.DateUtil;
+import org.demo.loanservice.common.MessageData;
+import org.demo.loanservice.common.MessageValue;
+import org.demo.loanservice.common.Util;
 import org.demo.loanservice.controllers.exception.DataNotFoundException;
 import org.demo.loanservice.dto.MapEntityToDto;
 import org.demo.loanservice.dto.enumDto.ApplicableObjects;
@@ -28,7 +32,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.*;
@@ -46,13 +49,13 @@ public class LoanProductServiceImpl implements ILoanProductService {
     public DataResponseWrapper<Object> save(LoanProductRq loanProductRq, String transactionId) {
         LoanProduct loanProduct = new LoanProduct();
         loanProduct.setLoanLimit(loanProductRq.getLoanLimit());
-        loanProduct.setLoanCondition(loanProductRq.getLoanCondition().getBytes(StandardCharsets.UTF_8));
+        loanProduct.setLoanCondition(loanProductRq.getLoanCondition());
         loanProduct.setNameProduct(loanProductRq.getNameLoanProduct());
-        loanProduct.setDescription(loanProductRq.getDescription().getBytes(StandardCharsets.UTF_8));
+        loanProduct.setDescription(loanProductRq.getDescription());
         loanProduct.setApplicableObjects(ApplicableObjects.valueOf(loanProductRq.getApplicableObjects()));
         loanProduct.setFormLoan(LoanType.valueOf(loanProductRq.getLoanForm()));
         loanProduct.setProductUrlImage("https://cdn.pixabay.com/photo/2015/04/23/22/00/tree-736885_1280.jpg");//todo
-        loanProduct.setUtilities(loanProductRq.getUtilities().getBytes(StandardCharsets.UTF_8));
+        loanProduct.setUtilities(loanProductRq.getUtilities());
         loanProduct.setIsDeleted(false);
         loanProduct.setTermLimit(loanProductRq.getTermLimit());
         loanProduct.setIsActive(false);
@@ -285,7 +288,7 @@ public class LoanProductServiceImpl implements ILoanProductService {
         loanProductRp.setProductName(loanProduct.getNameProduct());
         // Convert and set product description if it exists
         if (loanProduct.getDescription() != null) {
-            loanProductRp.setProductDescription(new String(loanProduct.getDescription(), StandardCharsets.UTF_8));
+            loanProductRp.setProductDescription(loanProduct.getDescription());
         }
         loanProductRp.setApplicableObjects(loanProduct.getApplicableObjects().name());
         loanProductRp.setFormLoan(loanProduct.getFormLoan().name());
@@ -307,11 +310,11 @@ public class LoanProductServiceImpl implements ILoanProductService {
         }
         loanProductRp.setTermLimit(loanProduct.getTermLimit());
         if (loanProduct.getUtilities() != null) {
-            loanProductRp.setUtilities(new String(loanProduct.getUtilities(), StandardCharsets.UTF_8));
+            loanProductRp.setUtilities(loanProduct.getUtilities());
         }
         loanProductRp.setProductUrlImage(loanProduct.getProductUrlImage());
         if (loanProduct.getLoanCondition() != null) {
-            loanProductRp.setLoanCondition(new String(loanProduct.getLoanCondition(), StandardCharsets.UTF_8));
+            loanProductRp.setLoanCondition(loanProduct.getLoanCondition());
         }
         // Format and set the created date as a string
         loanProductRp.setCreatedDate(DateUtil.format(DateUtil.YYYY_MM_DD_HH_MM_SS, loanProduct.getCreatedDate()));

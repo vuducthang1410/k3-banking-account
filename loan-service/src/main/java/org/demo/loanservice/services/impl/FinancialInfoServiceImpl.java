@@ -446,6 +446,9 @@ public class FinancialInfoServiceImpl implements IFinancialInfoService {
         financialDetailRp.setIdentificationNumber(customerDetailDTO.getIdentityCard());
         financialDetailRp.setDateOfBirth(DateUtil.format(DateUtil.DD_MM_YYYY_SLASH, customerDetailDTO.getDob()));
         financialDetailRp.setIsRegistered(financialInfoList.isEmpty());
+        financialDetailRp.setAccountId(bankingAccount.getAccountId());
+        financialDetailRp.setAccountType(bankingAccount.getAccountType().name());
+        financialDetailRp.setAccountTypeDescription(bankingAccount.getAccountType().getDescription());
         if (!financialInfoList.isEmpty()) {
             FinancialInfo financialInfo = financialInfoList.get(0);
             financialDetailRp.setFinancialInfoId(financialInfo.getId());
